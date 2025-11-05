@@ -1,16 +1,13 @@
 import { useState } from "react";
 import { HoverSocialIcon } from "./HoverSocialIcon"
 
-const RighSpace = ({ip = "0"}) => {
+const RighSpace = ({}) => {
     
     
   return (
     <>
     {/* User Info Simulation */}
-                        <div className="mb-6 p-4 bg-teal-50 rounded-lg border border-teal-200">
-                            <p className="text-sm font-semibold text-teal-800">Session IP:</p>
-                            <p className="font-mono text-xs text-teal-600 break-words">{ip}</p>
-                        </div>
+                     
       <div className="mb-4 text-center" >
                         <HoverSocialIcon
                 network="github"

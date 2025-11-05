@@ -14,6 +14,22 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+ @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+                .font-sans {
+                    font-family: 'Inter', sans-serif;
+                }
+                .canvas-container {
+                    /* Menyesuaikan flex agar konten mengambil sisa ruang */
+                    flex: 1; 
+                    min-height: 400px;
+                    height: 50vh; /* Dikelola oleh flex-1 */
+                    margin-bottom: 1rem;
+                }
+                @media (min-width: 1024px) {
+                    .canvas-container {
+                        max-height: 100%;
+                    }
+                }
 html {
   cursor: url(https://cur.cursors-4u.net/cursors/cur-11/cur1020.ani),
     url(https://cur.cursors-4u.net/cursors/cur-11/cur1020.png), auto !important;

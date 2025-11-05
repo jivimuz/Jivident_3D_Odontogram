@@ -3,11 +3,17 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'; // Using GLTFLoader
+
+declare global {
+    interface Window {
+        jspdf: any;
+    }
+}
 import DevNotes from './devNotes';
-import RighSpace from './rightSpace';
+import RightSpace from './rightSpace';
 
 // --- Three.js Global Variables ---
-let scene, camera, renderer, toothMeshes = [], raycaster, pointer, controls;
+let scene: THREE.Scene<THREE.Object3DEventMap>, camera: THREE.Camera, renderer: THREE.WebGLRenderer, toothMeshes: THREE.Object3D<THREE.Object3DEventMap>[] = [], raycaster: THREE.Raycaster, pointer: THREE.Vector2, controls: OrbitControls;
 
 // --- Constants ---
 const HIGHLIGHT_COLOR = 0x3b82f6; // Tailwind blue-500
@@ -24,7 +30,7 @@ const defaultToothMaterial = new THREE.MeshPhongMaterial({
 });
 
 // Mapping untuk ID mesh ke nama yang lebih deskriptif
-const TOOTH_MESH_NAME_MAP = {
+const TOOTH_MESH_NAME_MAP: { [key: string]: string } = {
     'Gums_Maxilla001_0': 'Gums Maxilla',
     'Gums_Mandibula001_0': 'Gums Mandibulla',
     'A_0': '(Left Top) Molar',
@@ -42,11 +48,11 @@ const TOOTH_MESH_NAME_MAP = {
     'M_0': '(Left Bottom) Canine',
     'N_0': '(Left Bottom) Lateral',
     'O_0': '(Left Bottom) Central',
-    'P_0': '(Left Right) Central',
-    'Q_0': '(Left Right) Lateral',
-    'R_0': '(Left Right) Canine',
-    'S_0': '(Left Right) Premolar',
-    'T_0': '(Left Right) Molar',
+    'P_0': '(Right Bottom) Central',
+    'Q_0': '(Right Bottom) Lateral',
+    'R_0': '(Right Bottom) Canine',
+    'S_0': '(Right Bottom) Premolar',
+    'T_0': '(Right Bottom) Molar',
 };
 
 
@@ -54,18 +60,18 @@ const TOOTH_MESH_NAME_MAP = {
  * Function to load the 3D model using GLTFLoader.
  * CHANGE: Hybrid mapping. All meshes are clickable, but names are pulled from the map if available.
  */
-async function loadTeethModel(setIsLoading, setAppMode) {
+async function loadTeethModel(setIsLoading: React.Dispatch<React.SetStateAction<boolean>>, setAppMode: React.Dispatch<React.SetStateAction<string>>) {
     // Clean up the scene if an old model exists
     const oldArchGroup = scene.getObjectByName("ArchGroup");
     if (oldArchGroup) {
         scene.remove(oldArchGroup);
-        oldArchGroup.traverse(child => {
-            if (child.isMesh) {
+        oldArchGroup.traverse((child: THREE.Object3D) => {
+            if (child instanceof THREE.Mesh) {
                 child.geometry.dispose();
                 if (Array.isArray(child.material)) {
-                    child.material.forEach(material => material.dispose());
+                    child.material.forEach((material: THREE.Material) => material.dispose());
                 } else {
-                    child.material.dispose();
+                    (child.material as THREE.Material).dispose();
                 }
             }
         });
@@ -92,7 +98,7 @@ async function loadTeethModel(setIsLoading, setAppMode) {
 
         // Traverse model to find tooth meshes
         loadedModel.traverse(child => {
-            if (child.isMesh) {
+            if (child instanceof THREE.Mesh) {
                 meshCount++;
                 
                 // *** LOG UNTUK MAPPING MANUAL (Opsional) ***
@@ -147,7 +153,7 @@ async function loadTeethModel(setIsLoading, setAppMode) {
 /**
  * Function to initialize the Three.js scene. (Only run once)
  */
-function initThree(canvasRef) {
+function initThree(canvasRef: React.RefObject<HTMLCanvasElement>) {
     const canvas = canvasRef.current;
     if (!canvas || scene) return; // Only initialize if it doesn't exist
 
@@ -199,14 +205,18 @@ function initThree(canvasRef) {
 
 
 // Helper function to remove markers from the scene
-const removeMarkersFromScene = (markerIds) => {
-    markerIds.forEach(id => {
+const removeMarkersFromScene = (markerIds: any[]) => {
+    markerIds.forEach((id: any) => {
         const marker = scene.getObjectByName(`Marker-${id}`);
         if (marker) {
             scene.remove(marker);
             // Clean up geometry and material to prevent memory leaks
-            marker.geometry.dispose();
-            marker.material.dispose();
+            if (marker instanceof THREE.Mesh) {
+                if (marker instanceof THREE.Mesh) {
+                    marker.geometry.dispose();
+                    marker.material.dispose();
+                }
+            }
         }
     });
 };
@@ -214,7 +224,20 @@ const removeMarkersFromScene = (markerIds) => {
 /**
  * Function to handle clicks on the tooth model (Mapping) with toggle functionality.
  */
-const onCanvasClick = (event, canvasRef, setMappedPoints) => {
+interface MappedPoint {
+    id: number;
+    toothId: string;
+    x: string;
+    y: string;
+    z: string;
+    type: string;
+    description?: string;
+}
+const onCanvasClick = (
+    event: { clientX: number; clientY: number; },
+    canvasRef: React.RefObject<HTMLCanvasElement>,
+    setMappedPoints: React.Dispatch<React.SetStateAction<MappedPoint[]>>
+) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -246,7 +269,7 @@ const onCanvasClick = (event, canvasRef, setMappedPoints) => {
             removeMarkersFromScene(markerIdsToRemove);
 
             // Reset color: Find all meshes associated with this group and recolor
-            toothGroup.traverse(child => {
+            toothGroup.traverse((child: { isMesh: any; userData: { parentGroup: any; }; material: { color: { setHex: (arg0: number) => void; }; }; }) => {
                 if (child.isMesh && child.userData.parentGroup === toothGroup) {
                     child.material.color.setHex(ORIGINAL_COLOR);
                 }
@@ -256,14 +279,14 @@ const onCanvasClick = (event, canvasRef, setMappedPoints) => {
             toothGroup.userData.markerIds = []; // Reset marker IDs
 
             // Remove point from React state
-            setMappedPoints(prevPoints => prevPoints.filter(p => p.toothId !== toothId));
+            setMappedPoints((prevPoints: any[]) => prevPoints.filter((p: { toothId: any; }) => p.toothId !== toothId));
             
         } else {
             // --- ADD (Toggle ON) ---
             const newMarkerId = Date.now();
 
             // Mark Clicked Tooth (Highlight)
-            toothGroup.traverse(child => {
+            toothGroup.traverse((child: { isMesh: any; userData: { parentGroup: any; }; material: { color: { setHex: (arg0: number) => void; }; }; }) => {
                 if (child.isMesh && child.userData.parentGroup === toothGroup) {
                     child.material.color.setHex(HIGHLIGHT_COLOR);
                 }
@@ -282,7 +305,7 @@ const onCanvasClick = (event, canvasRef, setMappedPoints) => {
             scene.add(marker);
 
             // Update React state
-            setMappedPoints(prevPoints => [
+            setMappedPoints((prevPoints: any) => [
                 ...prevPoints,
                 { 
                     id: newMarkerId,
@@ -299,9 +322,14 @@ const onCanvasClick = (event, canvasRef, setMappedPoints) => {
 };
 
 // --- NEW COMPONENT: Selection Screen ---
-const SelectionScreen = ({ onNewPatient, onTriggerImport }) => {
+type SelectionScreenProps = {
+    onNewPatient: () => void;
+    onTriggerImport: () => void;
+};
+
+const SelectionScreen: React.FC<SelectionScreenProps> = ({ onNewPatient, onTriggerImport }) => {
     return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-8 font-sans">
+        <div className="bg-gray-50 flex items-center justify-center p-8 font-sans" style={{minHeight:"95vh"}}>
             <script src="https://cdn.tailwindcss.com"></script>
             <style>
                 {`
@@ -342,7 +370,26 @@ const SelectionScreen = ({ onNewPatient, onTriggerImport }) => {
 };
 
 // --- NEW COMPONENT: Main Mapping Interface ---
-const MappingInterface = ({ 
+type MappingInterfaceProps = {
+    canvasRef: React.RefObject<HTMLCanvasElement>;
+    isLoading: boolean;
+    userId: any;
+    patientName: string;
+    setPatientName: React.Dispatch<React.SetStateAction<string>>;
+    patientId: string;
+    setPatientId: React.Dispatch<React.SetStateAction<string>>;
+    mappedPoints: any[];
+    isDownloading: boolean;
+    isJsPDFLoaded: boolean;
+    handleCanvasClick: (event: any) => void;
+    handleDescriptionChange: (id: any, newDescription: string) => void;
+    handleDeletePoint: (point: any) => void;
+    handleDownloadPDF: () => void;
+    handleDownloadJSON: () => void;
+    handleResetMapping: () => void;
+};
+
+const MappingInterface: React.FC<MappingInterfaceProps> = ({ 
     canvasRef,
     isLoading,
     userId,
@@ -363,45 +410,7 @@ const MappingInterface = ({
     return (
         // Wrapper utama diubah menjadi flex-col untuk menampung header dan footer
         <div className="min-h-screen bg-gray-50 flex flex-col font-sans"> 
-            {/* CDN for Tailwind (already present) */}
-            <script src="https://cdn.tailwindcss.com"></script>
-            {/* HILANGKAN SCRIPT JSPDF DI SINI, DIMUAT DINAMIS OLEH APP UTAMA */}
-            
-            <style>
-                {`
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-                .font-sans {
-                    font-family: 'Inter', sans-serif;
-                }
-                .canvas-container {
-                    /* Menyesuaikan flex agar konten mengambil sisa ruang */
-                    flex: 1; 
-                    min-height: 400px;
-                    height: 50vh; /* Dikelola oleh flex-1 */
-                    margin-bottom: 1rem;
-                }
-                @media (min-width: 1024px) {
-                    .canvas-container {
-                        max-height: 100%;
-                    }
-                }
-                `}
-            </style>
-            
-            {/* --- HEADER --- */}
-            <header className="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-20">
-                {/* Logo Kiri */}
-                <div className="flex items-center space-x-3">
-                    <img src={'/assets/logo.png'} width={200} className="mx-auto"  />
-                </div>
-                {/* Nama Pasien/Sesi Kanan */}
-                <div className="text-sm text-right">
-                     <a href="mailto:jivirasgal@gmail.com" className="link inline-block px-5 py-2 text-lg md:px-8 md:py-2 md:text-xl font-semibold bg-apple-accent border text-blue-500 rounded-full transition duration-300 hover:bg-white hover:text-black hover:ring-2 hover:ring-apple-accent focus:outline-none scroll-animate" style={{ transitionDelay: '0.4s' }}>
-                            Email Me
-                        </a>
-                </div>
-            </header>
-            
+          
             {/* --- MAIN CONTENT LAYOUT (FLEX) --- */}
             <div className="flex flex-col lg:flex-row p-4 sm:p-8 flex-1">
                 <div className="w-full">
@@ -534,7 +543,7 @@ const MappingInterface = ({
                                 <p className="text-gray-500 italic text-sm">No points have been marked yet.</p>
                             ) : (
                                 <ul className="space-y-2">
-                                    {mappedPoints.slice().reverse().map((point, index) => (
+                                    {mappedPoints.slice().reverse().map((point: { id: React.Key | null | undefined; toothId: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; type: any; x: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; y: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; z: string | number | bigint | boolean | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<string | number | bigint | boolean | React.ReactPortal | React.ReactElement<unknown, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | null | undefined> | null | undefined; description: string | number | readonly string[] | undefined; }, index: number) => (
                                         <li key={point.id} className="bg-white p-3 rounded-lg shadow-sm border-l-4 border-blue-500 flex justify-between items-start">
                                             <div className="flex-1">
                                                 <span className="font-bold text-lg text-blue-600">{point.toothId}</span>
@@ -576,17 +585,13 @@ const MappingInterface = ({
                 {/* Control Panel & Results Section (Right/Bottom) */}
                 <div className="lg:w-2/5 lg:pl-8">
                     <div className="bg-white p-8 sm:p-10 rounded-xl shadow-2xl text-center h-full">
-                        <RighSpace ip={userId} />
+                        <RightSpace/>
                         <DevNotes />
                     </div>
                 </div>
             </div>
             
-            {/* --- FOOTER --- */}
-            <footer className="bg-gray-800 text-white p-3 text-center text-xs mt-auto">
-                <p>&copy; {new Date().getFullYear()} Jivident 3D | Developed by Jivimz_ | All rights reserved.</p>
-                <p className="text-gray-400 mt-1">Session IP: {userId}</p>
-            </footer>
+          
 
         </div>
     );
@@ -597,7 +602,7 @@ const MappingInterface = ({
  * Main 3D Odontogram component.
  * Manages application state (mode) and data.
  */
-const App = () => {
+const Load3D = ({userId = null}) => {
     // Application State
     const [appMode, setAppMode] = useState('selection'); // 'selection', 'loading', 'mapping'
     const [isLoading, setIsLoading] = useState(true);
@@ -607,32 +612,41 @@ const App = () => {
     const [isJsPDFLoaded, setIsJsPDFLoaded] = useState(false); 
 
     // Data State
-    const [mappedPoints, setMappedPoints] = useState([]);
+    interface MappedPoint {
+        id: number;
+        toothId: string;
+        x: string;
+        y: string;
+        z: string;
+        type: string;
+        description?: string;
+    }
+    const [mappedPoints, setMappedPoints] = useState<MappedPoint[]>([]);
     const [patientName, setPatientName] = useState('');
     const [patientId, setPatientId] = useState('');
     
     // Refs
-    const canvasRef = useRef(null);
-    const fileInputRef = useRef(null); // Ref for JSON file input
+    const canvasRef = useRef<HTMLCanvasElement>(null) as React.RefObject<HTMLCanvasElement>;
+    const fileInputRef = useRef<HTMLInputElement>(null); // Ref for JSON file input
     
-    // --- MODIFICATION: Changed userId to fetch the user's IP ---
-    const [userId, setUserId] = useState('Loading IP...');
 
     // --- T3 FUNCTION: Reset Colors ---
     const resetToothColors = useCallback(() => {
-        const uniqueGroups = new Set();
+        const uniqueGroups = new Set<THREE.Object3D>();
         toothMeshes.forEach(mesh => {
             // Menggunakan default material yang sudah didefinisikan
-            if (mesh.material) {
+            if (mesh instanceof THREE.Mesh && mesh.material) {
                 mesh.material.color.setHex(ORIGINAL_COLOR);
             }
             if (mesh.userData.parentGroup) {
                 uniqueGroups.add(mesh.userData.parentGroup);
             }
         });
-        uniqueGroups.forEach(group => {
-            group.userData.isMapped = false;
-            group.userData.markerIds = [];
+        uniqueGroups.forEach((group: THREE.Object3D) => {
+            if (group.userData) {
+                group.userData.isMapped = false;
+                group.userData.markerIds = [];
+            }
         });
     }, []);
     
@@ -645,8 +659,8 @@ const App = () => {
         // 1. Reset scene (marker dan warna)
         // PERBAIKAN: Dapatkan semua ID marker yang ada di scene dan hapus menggunakan helper
         const existingMarkerIds = scene.children
-            .filter(c => c.name.startsWith('Marker-'))
-            .map(c => c.name.replace('Marker-', ''));
+            .filter((c: { name: string; }) => c.name.startsWith('Marker-'))
+            .map((c: { name: string; }) => c.name.replace('Marker-', ''));
         
         removeMarkersFromScene(existingMarkerIds); // Gunakan helper untuk membersihkan
         resetToothColors();
@@ -662,7 +676,7 @@ const App = () => {
 
             if (associatedGroup) {
                 // Apply highlight
-                associatedGroup.traverse(child => {
+                associatedGroup.traverse((child: { isMesh: any; userData: { parentGroup: any; }; material: { color: { setHex: (arg0: number) => void; }; }; }) => {
                     if (child.isMesh && child.userData.parentGroup === associatedGroup) {
                         child.material.color.setHex(HIGHLIGHT_COLOR);
                     }
@@ -691,15 +705,17 @@ const App = () => {
     }, [mappedPoints, resetToothColors]); // Dependencies updated
 
     // --- T3 FUNCTION: Delete diagnostic point ---
-    const handleDeletePoint = useCallback((pointToDelete) => {
+    const handleDeletePoint = useCallback((pointToDelete: { toothId: any; id: any; }) => {
         const { toothId, id } = pointToDelete;
         
         // 1. Remove visual marker from scene
-        const marker = scene.getObjectByName(`Marker-${id}`);
+        const marker = scene.getObjectByName(`${id}`);
         if (marker) {
             scene.remove(marker);
-            marker.geometry.dispose();
-            marker.material.dispose();
+              if (marker instanceof THREE.Mesh) {
+                marker.geometry.dispose();
+                marker.material.dispose();
+            }
         }
 
         // 2. Remove point from React state
@@ -716,7 +732,7 @@ const App = () => {
                  )?.userData.parentGroup;
 
                 if (associatedGroup) {
-                    associatedGroup.traverse(child => {
+                    associatedGroup.traverse((child: { isMesh: any; userData: { parentGroup: any; }; material: { color: { setHex: (arg0: number) => void; }; }; }) => {
                         if (child.isMesh && child.userData.parentGroup === associatedGroup) {
                             child.material.color.setHex(ORIGINAL_COLOR);
                         }
@@ -730,14 +746,18 @@ const App = () => {
     }, [setMappedPoints]);
 
     // --- FUNCTION: Update description ---
-    const handleDescriptionChange = useCallback((id, newDescription) => {
-        if (newDescription.length > 200) return; 
-        setMappedPoints(prev => 
-            prev.map(p => 
-                p.id === id ? { ...p, description: newDescription } : p
-            )
-        );
-    }, [setMappedPoints]);
+        const handleDescriptionChange = useCallback(
+            (id: any, newDescription: string) => {
+                if (newDescription.length > 200) return; // batasi 200 karakter
+                setMappedPoints(prev =>
+                    prev.map(p =>
+                        p.id === id ? { ...p, description: newDescription } : p
+                    )
+                );
+            },
+            [setMappedPoints]
+            );
+
 
     // --- FUNCTION: Download PDF ---
     const handleDownloadPDF = useCallback(() => {
@@ -799,15 +819,19 @@ const App = () => {
         }
 
         // Sort points by Tooth ID (ascending)
-        const sortedPoints = [...mappedPoints].sort((a, b) => {
-            const idA = a.toothId.match(/\d+/) ? parseInt(a.toothId.match(/\d+/)[0]) : a.toothId;
-            const idB = b.toothId.match(/\d+/) ? parseInt(b.toothId.match(/\d+/)[0]) : b.toothId;
+       // Sort points by Tooth ID (ascending)
+            const sortedPoints = [...mappedPoints].sort((a, b) => {
+            const numA = parseInt(a.toothId.match(/\d+/)?.[0] || "0", 10);
+            const numB = parseInt(b.toothId.match(/\d+/)?.[0] || "0", 10);
 
-            if (typeof idA === 'number' && typeof idB === 'number') {
-                return idA - idB;
+            if (!isNaN(numA) && !isNaN(numB)) {
+                return numA - numB;
             }
-            return String(idA).localeCompare(String(idB));
-        });
+
+            // fallback: if not numeric, compare alphabetically
+            return a.toothId.localeCompare(b.toothId);
+            });
+
 
         sortedPoints.forEach((point, index) => {
             const itemHeader = `Tooth ${point.toothId} (${point.type})`;
@@ -891,50 +915,74 @@ const App = () => {
     }, [patientName, patientId, mappedPoints]);
     
     // --- NEW FUNCTION: Import JSON ---
-    const handleImportJSON = useCallback((event) => {
-        const file = event.target.files[0];
+    const handleImportJSON = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
         if (!file || file.type !== 'application/json') {
             console.warn("Invalid file or not JSON.");
             return;
         }
 
         const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const text = e.target.result;
-                const data = JSON.parse(text);
-                
-                if (data.patientName !== undefined && data.patientId !== undefined && data.mappedPoints !== undefined) {
-                    setPatientName(data.patientName);
-                    setPatientId(data.patientId);
-                    setMappedPoints(data.mappedPoints);
-                    
-                    // Reset sync status
-                    setIsInitialSyncDone(false); 
-                    // Switch to loading mode to load 3D
-                    setAppMode('loading'); 
-                } else {
-                    console.warn("Invalid JSON format.");
-                }
-            } catch (err) {
-                console.error("Failed to parse JSON:", err);
+       reader.onload = (e) => {
+        try {
+            const text = e.target?.result;
+            if (!text || typeof text !== "string") {
+            console.warn("File kosong atau bukan teks valid.");
+            return;
             }
+
+            const data = JSON.parse(text);
+
+            const hasRequiredFields =
+            typeof data.patientName === "string" &&
+            typeof data.patientId === "string" &&
+            Array.isArray(data.mappedPoints);
+
+            if (hasRequiredFields) {
+            setPatientName(data.patientName);
+            setPatientId(data.patientId);
+            setMappedPoints(data.mappedPoints);
+
+            // Reset sync status
+            setIsInitialSyncDone(false);
+            // Switch to loading mode to load 3D
+            setAppMode("loading");
+            } else {
+            console.warn("Invalid JSON structure:", data);
+            }
+        } catch (err) {
+            console.error("Failed to parse JSON:", err);
+        }
         };
+
         reader.readAsText(file);
         
         // Reset file input
-        event.target.value = null;
+        event.target.value = '';
     }, [setPatientName, setPatientId, setMappedPoints, setAppMode, setIsInitialSyncDone]);
 
     // --- FUNCTION: Reset Mapping ---
     const handleResetMapping = useCallback(() => {
         // Remove all visual markers
-        const markers = scene.children.filter(c => c.name.startsWith('Marker-'));
-        markers.forEach(marker => {
+        const markers = scene.children.filter((c: { name: string; }) => c.name.startsWith('Marker-'));
+            markers.forEach((marker) => {
             scene.remove(marker);
-            marker.geometry.dispose();
-            marker.material.dispose();
+
+            if ((marker as any).geometry) {
+                (marker as any).geometry.dispose?.();
+            }
+
+            if ((marker as any).material) {
+                // Material bisa array (misal multi-material)
+                const mat = (marker as any).material;
+                if (Array.isArray(mat)) {
+                mat.forEach((m) => m.dispose?.());
+                } else {
+                mat.dispose?.();
+                }
+            }
         });
+
         
         // Reset all tooth colors
         resetToothColors();
@@ -947,26 +995,7 @@ const App = () => {
     }, [resetToothColors, setMappedPoints]);
 
 
-    // --- NEW EFFECT: Fetch User IP ---
-    useEffect(() => {
-        // Function to fetch IP from a public API
-        async function fetchUserIp() {
-            try {
-                // Menggunakan API publik yang aman untuk mendapatkan IP
-                const response = await fetch('https://api.ipify.org?format=json');
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                const data = await response.json();
-                setUserId(data.ip); // Set the fetched IP
-            } catch (error) {
-                console.error("Failed to fetch IP:", error);
-                setUserId('IP Unavailable'); // Fallback on error
-            }
-        }
-
-        fetchUserIp();
-    }, []); // Empty dependency array means this runs only once when the App component mounts
+  
     
     // --- PERBAIKAN JS PDF: Load jsPDF script dynamically ---
     useEffect(() => {
@@ -1018,12 +1047,21 @@ const App = () => {
         
         // Resize Listener
         const handleResize = () => {
-            if (camera && renderer && canvasRef.current) {
-                const container = canvasRef.current.parentElement;
-                if (!container) return; // Add a guard
-                camera.aspect = container.clientWidth / container.clientHeight;
+          if (camera && renderer && canvasRef.current) {
+            const container = canvasRef.current.parentElement;
+            if (!container) return;
+
+            const { clientWidth, clientHeight } = container;
+            if (clientWidth === 0 || clientHeight === 0) return;
+
+            // pastikan tipe camera-nya sesuai
+            if (camera instanceof THREE.PerspectiveCamera) {
+                camera.aspect = clientWidth / clientHeight;
                 camera.updateProjectionMatrix();
-                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+
+            renderer.setSize(clientWidth, clientHeight, false);
+            renderer.setPixelRatio(window.devicePixelRatio);
             }
         };
 
@@ -1057,7 +1095,7 @@ const App = () => {
 
 
     // --- Canvas Click Handler (needs useCallback) ---
-    const handleCanvasClick = useCallback((event) => {
+    const handleCanvasClick = useCallback((event: any) => {
         if (!isLoading && appMode === 'mapping') {
             onCanvasClick(event, canvasRef, setMappedPoints);
         }
@@ -1124,4 +1162,4 @@ const App = () => {
     );
 };
 
-export default App;
+export default Load3D;

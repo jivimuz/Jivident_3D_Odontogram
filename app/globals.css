@@ -3,7 +3,10 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-}
+  --bubble-bg: rgba(31, 41, 55, 0.4); /* Abu-abu transparan */
+  --bubble-border: rgba(255, 255, 255, 0.1);
+  --bubble-shadow: rgba(0, 0, 0, 0.4);
+  }
 
 @theme inline {
   --color-background: var(--background);
@@ -11,16 +14,96 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+html {
+  cursor: url(https://cur.cursors-4u.net/cursors/cur-11/cur1020.ani),
+    url(https://cur.cursors-4u.net/cursors/cur-11/cur1020.png), auto !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol" !important;
+}
+a[href], button {
+  cursor: url(https://cur.cursors-4u.net/cursors/cur-11/cur1017.ani),
+    url(https://cur.cursors-4u.net/cursors/cur-11/cur1017.png), auto !important;
+}
 
+.link {
+  cursor: url(https://cur.cursors-4u.net/cursors/cur-11/cur1017.ani),
+    url(https://cur.cursors-4u.net/cursors/cur-11/cur1017.png), auto !important;
+}
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
 }
-
+.navbar-bubble {
+  background: var(--bubble-bg);
+  box-shadow: 0 8px 32px 0 var(--bubble-shadow);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 9999px;
+  border: 1px solid var(--bubble-border);
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.bg-bubble {
+  background-color: var(--bubble-bg);
+}
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Animasi untuk Jendela Chat */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.3s ease-out forwards;
+}
+.avatar {
+  margin-bottom: 5px;
+  width: 35px;
+  height: 35px;
+  overflow: hidden;
+  border-radius: 50%;
+  border: 3px solid #ccc; /* opsional */
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-name {
+  margin: 6px;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+@keyframes slideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(50px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-slide-up-fade {
+  animation: slideUpFade 0.3s ease-out forwards;
 }

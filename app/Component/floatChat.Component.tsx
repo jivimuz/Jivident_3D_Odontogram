@@ -1,17 +1,180 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, useRef } from "react";
+
+// --- Komponen Kecil untuk Efek Mengetik (Typing Indicator) ---
+const TypingIndicator = () => (
+  <div className="bg-white border border-gray-100 p-3 rounded-2xl rounded-tl-none w-fit shadow-sm flex gap-1 items-center">
+    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+    <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+  </div>
+);
 
 export default function FloatChat() {
-  const phoneNumber = "6282120741970";
-  const defaultMessage = "Hello";
-  const defaultMessage2 = "Do you need any assistance?";
+  const phoneNumber = "6282120741970"; // Ganti nomor kamu
+
+  // Definisi tipe pesan
+  type Message = {
+    id: number;
+    sender: "bot" | "user";
+    text?: string;
+    type: "text" | "options" | "action" | "language-selector"; // Tambah language-selector
+    options?: Array<{ label: string; value: string; message?: string }>;
+    actionLink?: string;
+  };
 
   const [isOpen, setIsOpen] = useState(false);
   const [userMessage, setUserMessage] = useState("");
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [language, setLanguage] = useState<"id" | "en" | null>(null); // State Bahasa
+  const [isTyping, setIsTyping] = useState(false); // State Mengetik
+  const [isSelectedLang, setIsSelectedLang] = useState(false); // State Mengetik
+  
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [waktu, setWaktu] = useState("");
 
-  const toggleChat = () => {
-    setIsOpen(!isOpen);
+  // --- KAMUS BAHASA (Dictionary) ---
+  const RESOURCES = {
+    id: {
+      greeting: "Halo! Saya asisten virtual AI Jivi. Sebelum kita mulai, silakan pilih bahasa Anda.",
+      menuGreeting: "Senang bertemu denganmu! 👋 Apa tujuan Anda mengunjungi profil Jivi hari ini?",
+      options: [
+        { label: "💼 Ingin Merekrut (Hiring)", value: "hiring", message: "Halo Jivi, saya tertarik merekrut Anda." },
+        { label: "🤝 Kolaborasi Proyek", value: "project", message: "Halo Jivi, ayo diskusikan proyek kolaborasi." },
+        { label: "👋 Sekedar Menyapa", value: "hello", message: "Halo Jivi, salam kenal!" },
+      ],
+      responseLink: "Baik, saya sudah siapkan tautan ke WhatsApp pribadi Jivi untuk diskusi lebih lanjut. Silakan klik tombol di bawah:",
+      btnLabel: "Buka WhatsApp",
+      placeholder: "Ketik pesan manual...",
+      reset: "Mulai Ulang",
+      status: "Asisten AI"
+    },
+    en: {
+      greeting: "Hello! I am Jivi's AI virtual assistant. Before we start, please select your language.",
+      menuGreeting: "Nice to meet you! 👋 What brings you to Jivi's profile today?",
+      options: [
+        { label: "💼 Hiring Inquiry", value: "hiring", message: "Hi Jivi, I am interested in hiring you." },
+        { label: "🤝 Project Collaboration", value: "project", message: "Hi Jivi, let's discuss a collaboration." },
+        { label: "👋 Just Saying Hi", value: "hello", message: "Hi Jivi, nice to meet you!" },
+      ],
+      responseLink: "Great! I've prepared a direct link to Jivi's personal WhatsApp for further discussion. Please click below:",
+      btnLabel: "Open WhatsApp",
+      placeholder: "Type a message...",
+      reset: "Restart Chat",
+      status: "AI Assistant"
+    }
+  };
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      setWaktu(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
+    };
+    updateTime();
+    
+    // Inisialisasi pertama kali
+    if (messages.length === 0) {
+      startConversation();
+    }
+  }, []);
+
+  // Auto scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping, isOpen]);
+
+  // --- FUNGSI LOGIKA CHAT ---
+
+  const startConversation = () => {
+    setLanguage(null);
+    setMessages([
+      {
+        id: 1,
+        sender: "bot",
+        type: "language-selector", // Mulai dengan pilih bahasa
+        text: "🌏 Please select your language / Silakan pilih bahasa",
+      },
+    ]);
+  };
+
+  const handleLanguageSelect = (lang: "id" | "en") => {
+    setLanguage(lang);
+    setIsSelectedLang(true);
+    
+    // 1. Tambahkan feedback user memilih bahasa
+    const userMsgId = Date.now();
+    setMessages((prev) => [
+      ...prev,
+      { 
+        id: userMsgId, 
+        sender: "user", 
+        type: "text", 
+        text: lang === "id" ? "🇮🇩 Bahasa Indonesia" : "🇬🇧 English" 
+      }
+    ]);
+
+    // 2. Bot "Mengetik" lalu menampilkan menu
+    setIsTyping(true);
+    setTimeout(() => {
+      setIsTyping(false);
+      const res = RESOURCES[lang];
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          sender: "bot",
+          type: "text",
+          text: res.menuGreeting,
+        },
+        {
+          id: Date.now() + 1,
+          sender: "bot",
+          type: "options",
+          options: res.options,
+        }
+      ]);
+    }, 1000); // Delay 1 detik agar terasa natural
+  };
+
+  const handleOptionClick = (option: { label: string; value: string; message?: string }) => {
+    // Gunakan bahasa yang dipilih, atau default ke ID jika entah kenapa null
+    const currentLang = language || "id";
+    const res = RESOURCES[currentLang];
+
+    // 1. Pesan User
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now(), sender: "user", type: "text", text: option.label },
+    ]);
+
+    // 2. Efek Mengetik
+    setIsTyping(true);
+
+    // 3. Respon Bot
+    setTimeout(() => {
+      setIsTyping(false);
+      
+      const finalMessage = option.message || "Hello Jivi";
+      const waLink = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(finalMessage)}`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          sender: "bot",
+          type: "text",
+          text: res.responseLink,
+        },
+        {
+          id: Date.now() + 2,
+          sender: "bot",
+          type: "action",
+          text: res.btnLabel,
+          actionLink: waLink
+        }
+      ]);
+    }, 1200); // Delay sedikit lebih lama untuk respon "berpikir"
   };
 
   const handleSendMessage = (e: FormEvent) => {
@@ -20,201 +183,231 @@ export default function FloatChat() {
 
     const encodedMessage = encodeURIComponent(userMessage);
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
-
     window.open(whatsappUrl, "_blank");
     setUserMessage("");
     setIsOpen(false);
   };
 
-  const [waktu, setWaktu] = useState("");
+  const resetChat = () => {
+    setMessages([]);
+    startConversation();
+  };
 
-  useEffect(() => {
-    // Ambil waktu saat komponen di-mount
-    const now = new Date();
-    // const waktuLalu = new Date(now.getTime() - 5 * 60 * 1000); // 5 menit lalu
+  const toggleChat = () => {
+    setIsOpen(!isOpen);
+  };
 
-    // Format jam:menit
-    const jam = String(now.getHours()).padStart(2, "0");
-    const menit = String(now.getMinutes()).padStart(2, "0");
-
-    setWaktu(`${jam}:${menit}`);
-  }, []);
+  // Helper untuk mendapatkan teks UI saat ini
+  const uiText = language ? RESOURCES[language] : RESOURCES['id'];
 
   return (
-    // Gunakan React Fragment agar setiap elemen bisa diposisikan secara independen
     <>
-      {/* Jendela Chat - Sekarang punya positioning sendiri */}
+      {/* Jendela Chat */}
       {isOpen && (
-        <div
-          // Posisi jendela chat kita atur di sini, sedikit di atas tombol float
-          className="fixed bottom-[100px] right-5 z-40 w-80 h-[400px] bg-bubble rounded-lg shadow-xl flex flex-col animate-fade-in-up"
-        >
+        <div className="fixed bottom-[90px] right-5 z-40 w-80 sm:w-96 h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col animate-fade-in-up overflow-hidden border border-gray-200 font-sans">
+          
           {/* Header Chat */}
-          <div className="header bg-black text-white p-3 rounded-t-lg flex justify-between items-center" style={{borderBottomWidth:1, borderBottomColor:"black" }}>
-            {/* <h3 className="font-bold text-secondary">Hubungi Kami</h3> */}
-            <div className="flex flex-col flex-row  ">
-              <div className="flex col ">
-                <div className="avatar">
-                  <img src="/jivi.jpg" alt="Avatar" />
+          <div className="bg-gradient-to-r from-slate-800 to-slate-700 text-white p-4 flex justify-between items-center shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                {/* Kita pakai Avatar AI style */}
+                <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-bold border-2 border-white overflow-hidden">
+                    <img 
+                      src="jivi.jpg" 
+                      alt="AI" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => (e.currentTarget.style.display = 'none')}
+                    />
+                    <span className="absolute text-[10px]">AI</span>
                 </div>
-              <div className="flex col avatar-name">Jivi</div>
+                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-slate-700 rounded-full animate-pulse"></span>
+              </div>
+              <div>
+                <h3 className="font-bold text-sm flex items-center gap-1 text-black">
+                  Jivi's Assistant 
+                  <span className="bg-green-500/20 text-green-300 text-[10px] px-1 rounded border border-green-500/30">AI</span>
+                </h3>
+                <p className="text-[10px] text-slate-300 flex items-center gap-1">
+                  {language ? uiText.status : "Bot"} • Online
+                </p>
               </div>
             </div>
-            <button onClick={toggleChat} className="text-secondary link">
-              <svg
-                width="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  opacity="0.4"
-                  d="M16.34 1.99976H7.67C4.28 1.99976 2 4.37976 2 7.91976V16.0898C2 19.6198 4.28 21.9998 7.67 21.9998H16.34C19.73 21.9998 22 19.6198 22 16.0898V7.91976C22 4.37976 19.73 1.99976 16.34 1.99976Z"
-                  fill="currentColor"
-                ></path>
-                <path
-                  d="M15.0158 13.7703L13.2368 11.9923L15.0148 10.2143C15.3568 9.87326 15.3568 9.31826 15.0148 8.97726C14.6728 8.63326 14.1198 8.63426 13.7778 8.97626L11.9988 10.7543L10.2198 8.97426C9.87782 8.63226 9.32382 8.63426 8.98182 8.97426C8.64082 9.31626 8.64082 9.87126 8.98182 10.2123L10.7618 11.9923L8.98582 13.7673C8.64382 14.1093 8.64382 14.6643 8.98582 15.0043C9.15682 15.1763 9.37982 15.2613 9.60382 15.2613C9.82882 15.2613 10.0518 15.1763 10.2228 15.0053L11.9988 13.2293L13.7788 15.0083C13.9498 15.1793 14.1728 15.2643 14.3968 15.2643C14.6208 15.2643 14.8448 15.1783 15.0158 15.0083C15.3578 14.6663 15.3578 14.1123 15.0158 13.7703Z"
-                  fill="currentColor"
-                ></path>
-              </svg>
-            </button>
+            
+            {/* Tombol Close & Reset */}
+            <div className="flex items-center gap-2">
+                <button onClick={resetChat} title="Reset" className="text-slate-400 hover:text-white transition-colors">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.3"/>
+                    </svg>
+                </button>
+                <button onClick={toggleChat} className="text-slate-400 hover:text-white transition-colors">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 6 6 18"/><path d="m6 6 18 18"/>
+                    </svg>
+                </button>
+            </div>
           </div>
 
           {/* Body Chat */}
-          <div className="body p-4 flex-grow overflow-y-auto animate-slide-up-fade">
-            <div
-              className="mx-auto  text-center p-1 bg-bubble"
-              style={{
-                fontSize: "10px",
-                width: "120px",
-                borderRadius: "50px",
-                fontWeight: "bold",
-              }}
-            >
-              2 Unread Message
-            </div>
+          <div className="flex-grow overflow-y-auto p-4 bg-slate-50 space-y-4 custom-scrollbar overscroll-contain"
+          onWheel={(e) => e.stopPropagation()}>
+            <div className="text-center text-[10px] text-gray-400 my-2 uppercase tracking-wider">Today, {waktu}</div>
+            
+            {messages.map((msg) => (
+              <div key={msg.id} className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'} animate-fade-in`}>
+                
+                {/* Bubble Text */}
+                {msg.type === 'text' && (
+                  <div 
+                    className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm shadow-sm leading-relaxed ${
+                      msg.sender === 'user' 
+                        ? 'bg-slate-800 text-white rounded-br-none' 
+                        : 'bg-white text-gray-700 border border-gray-100 rounded-tl-none'
+                    }`}
+                  >
+                    {msg.text}
+                  </div>
+                )}
 
-            <div className="flex justify-start">
-              <div className="bot-message bg-gray-200 text-gray-800 pl-3  pr-2 pb-1 rounded-lg max-w-[80%]">
-                <p>
-                  <span className="text-sm">{defaultMessage} &nbsp;</span>
-                  <span
-                    style={{ fontSize: "10px", marginTop: "10px" }}
-                    className="float-end text-[10px] text-gray-500 "
+                {/* PEMILIH BAHASA (Language Selector) */}
+                {msg.type === 'language-selector' && (
+                    <div className="flex flex-col items-center w-full gap-3 my-2">
+                        <div className="bg-white p-3 rounded-xl border border-gray-100 text-sm text-center text-gray-600 shadow-sm">
+                            {msg.text}
+                        </div>
+                        <div className="flex gap-3 w-full justify-center">
+                            <button 
+                                onClick={() => handleLanguageSelect('id')}
+                                className="flex-1 bg-white hover:bg-red-50 border border-gray-200 hover:border-red-200 p-3 rounded-xl transition-all transform hover:-translate-y-1 shadow-sm flex flex-col items-center gap-1"
+                            >
+                                <span className="text-2xl text-black">🇮🇩</span>
+                                <span className="text-xs font-semibold text-gray-700">Indonesia</span>
+                            </button>
+                            <button 
+                                onClick={() => handleLanguageSelect('en')}
+                                className="flex-1 bg-white hover:bg-blue-50 border border-gray-200 hover:border-blue-200 p-3 rounded-xl transition-all transform hover:-translate-y-1 shadow-sm flex flex-col items-center gap-1"
+                            >
+                                <span className="text-2xl text-black">🇬🇧</span>
+                                <span className="text-xs font-semibold text-gray-700">English</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Opsi Pilihan (Menu) */}
+                {msg.type === 'options' && msg.options && (
+                  <div className="flex flex-col gap-2 mt-1 w-full max-w-[90%]">
+                    {msg.options.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => handleOptionClick(opt)}
+                        className="text-left text-sm bg-white hover:bg-green-50 text-slate-700 hover:text-green-700 border border-gray-200 hover:border-green-300 py-3 px-4 rounded-xl transition-all hover:shadow-sm active:scale-95 flex items-center gap-2 group"
+                      >
+                        <span className="group-hover:scale-110 transition-transform">{opt.label.split(' ')[0]}</span>
+                        <span>{opt.label.substring(opt.label.indexOf(' ') + 1)}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Tombol WhatsApp Action */}
+                {msg.type === 'action' && (
+                  <a 
+                    href={msg.actionLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white px-6 py-3 rounded-full text-sm font-bold shadow-md transition-transform hover:-translate-y-0.5 w-fit"
                   >
-                    {waktu}
-                  </span>
-                </p>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.008-.57-.008-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                    {msg.text}
+                  </a>
+                )}
               </div>
-            </div>
-            <div className="flex justify-start pt-1">
-              <div className="bot-message bg-gray-200 text-gray-800 pl-3  pr-2 pb-1 rounded-lg max-w-[80%]">
-                <p>
-                  <span className="text-sm">{defaultMessage2} &nbsp;</span>
-                  <span
-                    style={{ fontSize: "10px", marginTop: "10px" }}
-                    className="float-end text-[10px] text-gray-500 "
-                  >
-                    {waktu}
-                  </span>
-                </p>
-              </div>
-            </div>
+            ))}
+
+            {/* Indikator Mengetik (AI Thinking) */}
+            {isTyping && (
+                <div className="flex justify-start animate-fade-in">
+                    <TypingIndicator />
+                </div>
+            )}
+            
+            <div ref={messagesEndRef} />
           </div>
 
           {/* Footer/Input Chat */}
-          <div className="footer p-2  border-t border-gray-200 ">
-            <form
-              onSubmit={handleSendMessage}
-              className="flex items-center gap-2"
-            >
+          <div className="p-3 bg-white border-t border-gray-200">
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
               <input
                 type="text"
                 value={userMessage}
                 onChange={(e) => setUserMessage(e.target.value)}
-                placeholder="Write your message..."
-                className="flex-grow text-primary bg-secondary p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                autoFocus
+                placeholder={uiText.placeholder}
+                className="flex-grow bg-slate-100 text-gray-700 text-sm p-3 rounded-full focus:outline-none focus:ring-2 focus:ring-slate-500 border-transparent border transition-all"
               />
               <button
                 type="submit"
-                className="bg-green-600 text-white p-2 rounded-full hover:bg-green-700 transition-colors link"
+                disabled={!userMessage.trim() || !isSelectedLang}
+                className={`p-3 rounded-full text-white transition-all shadow-sm flex-shrink-0 ${
+                    userMessage.trim() &&  isSelectedLang? 'bg-slate-800 hover:bg-slate-900 hover:shadow-md' : 'bg-gray-300 cursor-not-allowed'
+                }`}
               >
-                <svg
-                  width="25"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M7.21433 13.1328L14.0624 8.91355C14.2158 8.81954 14.4122 8.82854 14.5558 8.93955C15.2064 9.44057 15.7877 9.9486 16.1755 10.3756C16.1755 10.3756 16.5096 10.7176 16.6542 10.9346C16.8877 11.2307 17 11.6177 17 11.9937C17 12.4157 16.8769 12.8147 16.6317 13.1338C16.576 13.1908 16.364 13.4418 16.1638 13.6468C14.9954 14.9228 11.9455 17.031 10.3414 17.67C10.1079 17.773 9.48466 17.988 9.16131 18C8.84967 18 8.54879 17.932 8.25962 17.783C7.90403 17.578 7.62561 17.26 7.46931 16.8829C7.36869 16.6209 7.21336 15.8349 7.21336 15.8119C7.11274 15.2509 7.03751 14.4628 7.00039 13.5428C6.99355 13.3778 7.07659 13.2178 7.21433 13.1328Z"
-                    fill="currentColor"
-                  ></path>
-                  <path
-                    opacity="0.4"
-                    d="M7.67252 10.8603C7.37066 11.0473 6.99064 10.8083 7.00529 10.4493C7.04144 9.60721 7.10396 8.86518 7.18016 8.31315C7.19188 8.30115 7.34721 7.3221 7.52598 6.99108C7.83762 6.37605 8.44916 6.00003 9.10662 6.00003H9.16132C9.5853 6.01103 10.487 6.38705 10.487 6.41005C10.9412 6.59906 11.5342 6.91908 12.1721 7.3041C12.4594 7.47811 12.4662 7.90513 12.179 8.08214L7.67252 10.8603Z"
-                    fill="currentColor"
-                  ></path>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                 </svg>
               </button>
             </form>
+            <div className="text-center mt-2 flex justify-center gap-2 text-[10px] text-gray-400">
+                 <span>Powered by Jivi Manual Logic</span>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Floating Action Button (FAB) - Tombol Float */}
+      {/* Floating Action Button (FAB) */}
       <button
         onClick={toggleChat}
-        className={`fixed link bottom-5 right-5 z-50 w-16 h-16 ${
-          isOpen
-            ? "bg-red-800 hover:bg-red-600"
-            : "bg-green-600 hover:bg-green-700"
-        } text-white rounded-full shadow-lg flex items-center justify-center  transition-transform transform hover:scale-110`}
-        aria-label="Buka Chat"
+        className={`fixed bottom-5 right-5 z-50 w-16 h-16  flex items-center justify-center rounded-full shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+            isOpen ? "bg-red-800 rotate-90" : "bg-green-900 hover:bg-green-700 animate-bounce-slow"
+        }`}
+        aria-label="Toggle Chat"
       >
         {isOpen ? (
-          <svg
-            width="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              opacity="0.4"
-              d="M22 12C22 17.515 17.514 22 12 22C6.486 22 2 17.515 2 12C2 6.486 6.486 2 12 2C17.514 2 22 6.486 22 12Z"
-              fill="currentColor"
-            ></path>
-            <path
-              d="M16.2211 10.5575C16.2211 10.7485 16.1481 10.9405 16.0021 11.0865L12.5321 14.5735C12.3911 14.7145 12.2001 14.7935 12.0001 14.7935C11.8011 14.7935 11.6101 14.7145 11.4691 14.5735L7.99707 11.0865C7.70507 10.7935 7.70507 10.3195 7.99907 10.0265C8.29307 9.73448 8.76807 9.73548 9.06007 10.0285L12.0001 12.9815L14.9401 10.0285C15.2321 9.73548 15.7061 9.73448 16.0001 10.0265C16.1481 10.1725 16.2211 10.3655 16.2211 10.5575Z"
-              fill="currentColor"
-            ></path>
-          </svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                <path d="M18 6 6 18"/><path d="m6 6 18 18"/>
+            </svg>
         ) : (
-          <svg
-            width="32"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              opacity="0.4"
-              d="M12.02 2C6.21 2 2 6.74 2 12C2 13.68 2.49 15.41 3.35 16.99C3.51 17.25 3.53 17.58 3.42 17.89L2.75 20.13C2.6 20.67 3.06 21.07 3.57 20.91L5.59 20.31C6.14 20.13 6.57 20.36 7.081 20.67C8.541 21.53 10.36 21.97 12 21.97C16.96 21.97 22 18.14 22 11.97C22 6.65 17.7 2 12.02 2Z"
-              fill="currentColor"
-            ></path>
-            <path
-              fillRule="evenodd"
-              clipRule="evenodd"
-              d="M11.9807 13.2901C11.2707 13.2801 10.7007 12.7101 10.7007 12.0001C10.7007 11.3001 11.2807 10.7201 11.9807 10.7301C12.6907 10.7301 13.2607 11.3001 13.2607 12.0101C13.2607 12.7101 12.6907 13.2901 11.9807 13.2901ZM7.37033 13.2901C6.67033 13.2901 6.09033 12.7101 6.09033 12.0101C6.09033 11.3001 6.66033 10.7301 7.37033 10.7301C8.08033 10.7301 8.65033 11.3001 8.65033 12.0101C8.65033 12.7101 8.08033 13.2801 7.37033 13.2901ZM15.3105 12.0101C15.3105 12.7101 15.8805 13.2901 16.5905 13.2901C17.3005 13.2901 17.8705 12.7101 17.8705 12.0101C17.8705 11.3001 17.3005 10.7301 16.5905 10.7301C15.8805 10.7301 15.3105 11.3001 15.3105 12.0101Z"
-              fill="currentColor"
-            ></path>
-          </svg>
+            <div className="relative">
+                {/* Ikon Robot/AI Sederhana */}
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 8V4H8" /><rect x="4" y="8" width="16" height="12" rx="2" /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M15 13v2" /><path d="M9 13v2" />
+                </svg>
+                {/* Notification Badge */}
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                </span>
+            </div>
         )}
       </button>
-      {isOpen ? (
-        <style>{`.page-btn { display: none !important; }`}</style>
-      ) : (
-        <style>{`.page-btn { display: flex !important; }`}</style>
-      )}
+      
+      <style jsx>{`
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-fade-in-up {
+            animation: fade-in-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out forwards;
+        }
+        @keyframes fade-in {
+             from { opacity: 0; transform: translateY(5px); }
+             to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </>
   );
 }

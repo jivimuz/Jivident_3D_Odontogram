@@ -30,7 +30,7 @@ const defaultToothMaterial = new THREE.MeshPhongMaterial({
 });
 
 // Mapping untuk ID mesh ke nama yang lebih deskriptif
-const TOOTH_MESH_NAME_MAP: { [key: string]: string } = {
+const TOOTH_MESH_NAME_MAP_CHILD: { [key: string]: string } = {
     'Gums_Maxilla001_0': 'Gums Maxilla',
     'Gums_Mandibula001_0': 'Gums Mandibulla',
     'A_0': '(Left Top) Molar',
@@ -55,14 +55,61 @@ const TOOTH_MESH_NAME_MAP: { [key: string]: string } = {
     'T_0': '(Right Bottom) Molar',
 };
 
+const TOOTH_MESH_NAME_MAP_ADULT: { [key: string]: string } = {
+        // --- Rahang Atas Kanan (Quadrant 1) ---
+        "Box023_01_-_Default_0": "11 (Right Top) Central Incisor",
+        "Box024_01_-_Default_0": "12 (Right Top) Lateral Incisor",
+        "Box025_01_-_Default_0": "13 (Right Top) Canine",
+        "Box031_01_-_Default_0": "14 (Right Top) First Premolar",
+        "Box033_01_-_Default_0": "15 (Right Top) Second Premolar",
+        "Box032_01_-_Default_0": "16 (Right Top) First Molar",
+        "Box035_01_-_Default_0": "17 (Right Top) Second Molar",
+        "Box034_01_-_Default_0": "18 (Right Top) Third Molar",
+
+        // --- Rahang Atas Kiri (Quadrant 2) ---
+        "Box020_01_-_Default_0": "21 (Left Top) Central Incisor",
+        "Box021_01_-_Default_0": "22 (Left Top) Lateral Incisor",
+        "Box022_01_-_Default_0": "23 (Left Top) Canine",
+        "Box026_01_-_Default_0": "24 (Left Top) First Premolar",
+        "Box028_01_-_Default_0": "25 (Left Top) Second Premolar",
+        "Box027_01_-_Default_0": "26 (Left Top) First Molar",
+        "Box030_01_-_Default_0": "27 (Left Top) Second Molar",
+        "Box029_01_-_Default_0": "28 (Left Top) Third Molar",
+
+        // --- Rahang Bawah Kiri (Quadrant 3) ---
+        "Box011_01_-_Default_0": "38 (Left Bottom) Third Molar",
+        "Box013_01_-_Default_0": "37 (Left Bottom) Second Molar",
+        "Box008_01_-_Default_0": "36 (Left Bottom) First Molar",
+        "Box009_01_-_Default_0": "35 (Left Bottom) Second Premolar",
+        "Box007_01_-_Default_0": "34 (Left Bottom) First Premolar",
+        "Box003_01_-_Default_0": "33 (Left Bottom) Canine",
+        "Box002_01_-_Default_0": "32 (Left Bottom) Lateral Incisor",
+        "Box001_01_-_Default_0": "31 (Left Bottom) Central Incisor",
+
+        // --- Rahang Bawah Kanan (Quadrant 4) ---
+        "Box004_01_-_Default_0": "41 (Right Bottom) Central Incisor",
+        "Box005_01_-_Default_0": "42 (Right Bottom) Lateral Incisor",
+        "Box006_01_-_Default_0": "43 (Right Bottom) Canine",
+        "Box015_01_-_Default_0": "44 (Right Bottom) First Premolar",
+        "Box017_01_-_Default_0": "45 (Right Bottom) Second Premolar",
+        "Box016_01_-_Default_0": "46 (Right Bottom) First Molar",
+        "Box019_01_-_Default_0": "47 (Right Bottom) Second Molar",
+        "GeoSphere001_01_-_Default_0": "48 (Right Bottom) Third Molar",
+
+        // --- Lain-lain ---
+        "Tube002_07_-_Default_0": "(Top Tube) Gums Maxilla",
+        "Tube001_07_-_Default_0": "(Bottom Tube) Gums Mandibula",
+        "lingua_02_-_Default_0": "(Tongue) Lingua",
+    };
+
 
 /**
  * Function to load the 3D model using GLTFLoader.
  * CHANGE: Hybrid mapping. All meshes are clickable, but names are pulled from the map if available.
  */
-async function loadTeethModel(setIsLoading: React.Dispatch<React.SetStateAction<boolean>>, setAppMode: React.Dispatch<React.SetStateAction<string>>) {
-    // Clean up the scene if an old model exists
-    const oldArchGroup = scene.getObjectByName("ArchGroup");
+async function loadTeethModel(setIsLoading: React.Dispatch<React.SetStateAction<boolean>>, setAppMode: React.Dispatch<React.SetStateAction<string>>, toothType: string) {
+    // 1. Bersihkan Scene Lama
+    const oldArchGroup = scene?.getObjectByName("ArchGroup") ?? false;
     if (oldArchGroup) {
         scene.remove(oldArchGroup);
         oldArchGroup.traverse((child: THREE.Object3D) => {
@@ -77,52 +124,59 @@ async function loadTeethModel(setIsLoading: React.Dispatch<React.SetStateAction<
         });
     }
     
-    toothMeshes = []; // Reset the clickable mesh list
+    toothMeshes = []; // Reset array raycaster
     
-    // --- MAIN LOGIC: Using GLTFLoader ---
     const loader = new GLTFLoader();
-    // Use the user-requested URL (assuming it's in the /public folder)
-    const GLB_URL = '/assets/3d/user.bin.gz'; 
+    // Tentukan URL berdasarkan tipe
+    const GLB_URL = toothType === "child" || !toothType ? '/assets/bin/ip1.bin.gz' : '/assets/bin/ip3.bin.gz'; 
 
     try {
         const gltf = await loader.loadAsync(GLB_URL);
         const loadedModel = gltf.scene;
         
-        // Set model position, scale, rotation (may need adjustment)
+        // Posisi standar
         loadedModel.scale.set(1.0, 1.0, 1.0); 
         loadedModel.position.set(0, -2, 0); 
         loadedModel.rotation.set(0, 0, 0); 
-        loadedModel.name = "ArchGroup"; // Rename group
+        loadedModel.name = "ArchGroup"; 
         
-        let meshCount = 0;
-
-        // Traverse model to find tooth meshes
         loadedModel.traverse(child => {
             if (child instanceof THREE.Mesh) {
-                meshCount++;
                 
-                // *** LOG UNTUK MAPPING MANUAL (Opsional) ***
-                // Anda masih perlu ini untuk mengisi TOOTH_MESH_NAME_MAP
-                // console.log("Found mesh:", child.name); 
+                // --- FIX 1: MASALAH WARNA ADULT (HITAM) ---
+                // Hitung normal agar bereaksi terhadap cahaya
+                child.geometry.computeVertexNormals(); 
+                // Hapus atribut warna bawaan agar material Ivory kita yang tampil
+                if (child.geometry.attributes.color) {
+                    child.geometry.deleteAttribute('color');
+                }
 
-                // --- LOGIKA MAPPING HYBRID (BARU) ---
+                // --- FIX 2: MASALAH KLIK HILANG (LOGIKA TARGET) ---
+                // Cek nama di MAP Child atau Adult
+                const mapToUse = (toothType === "child" || !toothType) ? TOOTH_MESH_NAME_MAP_CHILD : TOOTH_MESH_NAME_MAP_ADULT;
                 
-                // 1. Cek apakah nama mesh ada di PETA
-                const mappedId = TOOTH_MESH_NAME_MAP[child.name];
-                
-                // 2. Terapkan material default
+                // Skenario A: Nama gigi ada di Mesh ini langsung (Umum di model Adult/Box...)
+                let mappedName = mapToUse[child.name];
+                let targetObject = child;
+
+                // Skenario B: Jika tidak ketemu, cek Parent-nya (Umum di model Child/Group)
+                if (!mappedName && child.parent && child.parent.type !== 'Scene') {
+                    if (mapToUse[child.parent.name]) {
+                        mappedName = mapToUse[child.parent.name];
+                        targetObject = child.parent as THREE.Mesh; // Cast as Object3D/Mesh
+                    }
+                }
+
+                // Terapkan Material
                 const singleMaterial = defaultToothMaterial.clone();
                 child.material = singleMaterial;
 
-                // 3. Tentukan objek target (Grup atau mesh itu sendiri)
-                const targetObject = (child.parent && child.parent.type !== 'Scene') ? child.parent : child;
-
-                // 4. Set userData pada objek target
+                // Setup UserData untuk Raycaster
+                // Kita hanya setup jika belum di-setup (untuk menghindari overwrite jika parent dishare)
                 if (!targetObject.userData.isTooth) {
                     targetObject.userData = {
-                        // Jika 'mappedId' ada, gunakan itu. 
-                        // Jika tidak (masih placeholder), gunakan nama mesh ASLI sebagai ID.
-                        toothId: mappedId ? mappedId : child.name, 
+                        // Gunakan nama mapping jika ada, jika tidak gunakan nama asli mesh sebagai fallback
+                        toothId: mappedName ? mappedName : child.name, 
                         isTooth: true, 
                         isMapped: false, 
                         markerIds: [],
@@ -130,22 +184,21 @@ async function loadTeethModel(setIsLoading: React.Dispatch<React.SetStateAction<
                     };
                 }
                 
-                // 5. SELALU tambahkan mesh ke daftar yang bisa diklik
+                // PENTING: Link-kan mesh fisik ke objek logika (targetObject)
                 child.userData.parentGroup = targetObject; 
+                
+                // Masukkan ke array yang dicek oleh Raycaster
                 toothMeshes.push(child); 
             }
         });
 
-        // console.log(`Model loaded, found ${meshCount} meshes. ${toothMeshes.length} meshes mapped as clickable.`);
         scene.add(loadedModel);
         setIsLoading(false);
-        setAppMode('mapping'); // Pindah ke mode mapping setelah pemuatan berhasil
+        setAppMode('mapping'); 
 
     } catch (error) {
         console.error(`Failed to load model at ${GLB_URL}:`, error);
-        // Menghapus baris log yang tidak diperlukan di sini
         setIsLoading(false);
-        // Biarkan tetap di 'loading' atau pindahkan ke 'selection' jika gagal total
     }
 }
 
@@ -317,7 +370,7 @@ const onCanvasClick = (
                     description: '' // New description added
                 }
             ]);
-        }
+        } 
     }
 };
 
@@ -374,6 +427,8 @@ type MappingInterfaceProps = {
     canvasRef: React.RefObject<HTMLCanvasElement>;
     isLoading: boolean;
     userId: any;
+    toothType: string;
+    setToothType: React.Dispatch<React.SetStateAction<string>>;
     patientName: string;
     setPatientName: React.Dispatch<React.SetStateAction<string>>;
     patientId: string;
@@ -393,6 +448,9 @@ const MappingInterface: React.FC<MappingInterfaceProps> = ({
     canvasRef,
     isLoading,
     userId,
+    
+    toothType,
+    setToothType,
     patientName,
     setPatientName,
     patientId,
@@ -491,8 +549,28 @@ const MappingInterface: React.FC<MappingInterfaceProps> = ({
                         </div>
                     
                         <div className="flex flex-col md:flex-row md:gap-4 mb-4">
-                            {/* --- PATIENT INPUT --- */}
+                            {/* --- TOOTH TYPE SELECT --- */}
                             <div className="w-full md:w-1/2">
+                            <label
+                                htmlFor="toothType"
+                                className="block text-sm font-medium text-gray-700"
+                            >
+                                Tooth Type
+                            </label>
+                            <select
+                                id="toothType"
+                               value={toothType}
+                                onChange={(e) => setToothType(e.target.value)}
+                                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 sm:text-sm"
+                                style={{ color: "black" }}
+                            >
+                                <option value="child">Child (20)</option>
+                                <option value="adult">Adult (32)</option>
+                            </select>
+                            </div>
+
+                            {/* --- PATIENT INPUT --- */}
+                             <div className="w-full md:w-1/2">
                                 <label
                                 htmlFor="patientName"
                                 className="block text-sm font-medium text-gray-700"
@@ -509,6 +587,8 @@ const MappingInterface: React.FC<MappingInterfaceProps> = ({
                                 placeholder="Enter patient name..."
                                 />
                             </div>
+
+
 
                             <div className="w-full md:w-1/2 mt-4 md:mt-0">
                                 <label
@@ -610,7 +690,6 @@ const Load3D = ({userId = null}) => {
     const [isInitialSyncDone, setIsInitialSyncDone] = useState(false); // For post-import sync
     // NEW STATE: Status pemuatan library jsPDF
     const [isJsPDFLoaded, setIsJsPDFLoaded] = useState(false); 
-
     // Data State
     interface MappedPoint {
         id: number;
@@ -623,6 +702,8 @@ const Load3D = ({userId = null}) => {
     }
     const [mappedPoints, setMappedPoints] = useState<MappedPoint[]>([]);
     const [patientName, setPatientName] = useState('');
+    const [toothType, setToothType] = useState('');
+    const [LastToothType, setLastToothType] = useState('');
     const [patientId, setPatientId] = useState('');
     
     // Refs
@@ -786,6 +867,9 @@ const Load3D = ({userId = null}) => {
 
         // 2. Patient Info
         doc.setFontSize(12);
+         doc.setFont(undefined, 'normal');
+        doc.text(`Date Printed: ${new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })}`, margin, y);
+        y += 10;
         doc.setFont(undefined, 'normal');
         // Patient Name (Left)
         doc.text(`Patient Name:`, margin, y);
@@ -797,10 +881,13 @@ const Load3D = ({userId = null}) => {
         doc.setFont(undefined, 'bold');
         doc.text(patientId || '(Not set)', margin + 118, y);
         y += 7;
+         doc.setFont(undefined, 'normal');
+        doc.text(`Tooth Type:`, margin , y);
+        doc.setFont(undefined, 'bold');
+        doc.text(toothType || '(Not set)', margin + 35, y);
+        y += 7;
         // Date
-        doc.setFont(undefined, 'normal');
-        doc.text(`Date Printed: ${new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'long', year: 'numeric' })}`, margin, y);
-        y += 10;
+       
 
         // 3. Report Header
         doc.setFontSize(14);
@@ -895,6 +982,7 @@ const Load3D = ({userId = null}) => {
     // --- NEW FUNCTION: Download JSON ---
     const handleDownloadJSON = useCallback(() => {
         const data = {
+            toothType: toothType,
             patientName: patientName,
             patientId: patientId,
             mappedPoints: mappedPoints
@@ -912,55 +1000,49 @@ const Load3D = ({userId = null}) => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-    }, [patientName, patientId, mappedPoints]);
+    }, [toothType,patientName, patientId, mappedPoints]);
     
     // --- NEW FUNCTION: Import JSON ---
     const handleImportJSON = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file || file.type !== 'application/json') {
-            console.warn("Invalid file or not JSON.");
-            return;
-        }
+        if (!file || file.type !== 'application/json') return;
 
         const reader = new FileReader();
-       reader.onload = (e) => {
-        try {
-            const text = e.target?.result;
-            if (!text || typeof text !== "string") {
-            console.warn("File kosong atau bukan teks valid.");
-            return;
+        reader.onload = (e) => {
+            try {
+                const text = e.target?.result;
+                if (!text || typeof text !== "string") return;
+
+                const data = JSON.parse(text);
+
+                if (data.mappedPoints) { // Cek validasi sederhana
+                    // 1. SET FLAG IMPORT TRUE
+
+                    setPatientName(data.patientName || '');
+                    setPatientId(data.patientId || '');
+                    setMappedPoints(data.mappedPoints);
+
+                    // 2. UPDATE TOOTH TYPE
+                    const importedType = data.toothType ?? 'child';
+                    
+                    // Jika tipe sama, kita harus load ulang manual agar poin tergambar
+                        // Force reload scene jika tipe tidak berubah tapi data baru masuk
+                        setAppMode("loading");
+
+                    setLastToothType(importedType);
+                    setToothType(importedType);
+                    
+                    // Reset sync status agar poin digambar ulang
+                    setIsInitialSyncDone(false);
+                    if(appMode !== "loading") setAppMode("loading");
+                }
+            } catch (err) {
+                console.error("Failed to parse JSON:", err);
             }
-
-            const data = JSON.parse(text);
-
-            const hasRequiredFields =
-            typeof data.patientName === "string" &&
-            typeof data.patientId === "string" &&
-            Array.isArray(data.mappedPoints);
-
-            if (hasRequiredFields) {
-            setPatientName(data.patientName);
-            setPatientId(data.patientId);
-            setMappedPoints(data.mappedPoints);
-
-            // Reset sync status
-            setIsInitialSyncDone(false);
-            // Switch to loading mode to load 3D
-            setAppMode("loading");
-            } else {
-            console.warn("Invalid JSON structure:", data);
-            }
-        } catch (err) {
-            console.error("Failed to parse JSON:", err);
-        }
         };
-
         reader.readAsText(file);
-        
-        // Reset file input
         event.target.value = '';
-    }, [setPatientName, setPatientId, setMappedPoints, setAppMode, setIsInitialSyncDone]);
-
+    }, [toothType, setToothType, setPatientName, setPatientId, setMappedPoints, setAppMode]);
     // --- FUNCTION: Reset Mapping ---
     const handleResetMapping = useCallback(() => {
         // Remove all visual markers
@@ -1033,17 +1115,18 @@ const Load3D = ({userId = null}) => {
     // --- EFFECT: Initialization and Model Loading ---
     useEffect(() => {
         // Only run if in 'loading' mode and T3 isn't already init
-        if (appMode === 'loading') {
-            if (!scene) {
+          if (!scene) {
                 initThree(canvasRef);
             }
             
-            // Set isLoading (spinner)
-            setIsLoading(true);
+        // if (appMode === 'loading') {
+          
+        //     // Set isLoading (spinner)
+        //     setIsLoading(true);
             
-            // Load model. This function will setAppMode('mapping') when done.
-            loadTeethModel(setIsLoading, setAppMode); 
-        }
+        //     // Load model. This function will setAppMode('mapping') when done.
+        //     loadTeethModel(setIsLoading, setAppMode, toothType ?? null); 
+        // }
         
         // Resize Listener
         const handleResize = () => {
@@ -1074,7 +1157,20 @@ const Load3D = ({userId = null}) => {
         };
     }, [appMode]); // Depends on appMode
 
-    // --- NEW EFFECT: Sync 3D after Import ---
+useEffect(() => {
+        if(scene){
+            // Selalu load model baru jika toothType berubah
+            setIsLoading(true);
+            loadTeethModel(setIsLoading, setAppMode, toothType ?? null); 
+            
+            if(LastToothType != toothType){
+                setLastToothType(toothType);
+
+                    handleResetMapping();
+            }
+        }
+    }, [toothType]);
+        // --- NEW EFFECT: Sync 3D after Import ---
     useEffect(() => {
         // Run ONLY if:
         // 1. Loading is finished
@@ -1109,6 +1205,7 @@ const Load3D = ({userId = null}) => {
         setMappedPoints([]);
         setIsInitialSyncDone(false); // Reset sync flag
         setAppMode('loading'); // Start loading T3
+        setToothType('child');
     };
 
     const handleTriggerImport = () => {
@@ -1145,6 +1242,8 @@ const Load3D = ({userId = null}) => {
             canvasRef={canvasRef}
             isLoading={isLoading}
             userId={userId}
+            toothType={toothType}
+            setToothType={setToothType}
             patientName={patientName}
             setPatientName={setPatientName}
             patientId={patientId}
@@ -1163,3 +1262,7 @@ const Load3D = ({userId = null}) => {
 };
 
 export default Load3D;
+function handleResetMapping() {
+    throw new Error('Function not implemented.');
+}
+

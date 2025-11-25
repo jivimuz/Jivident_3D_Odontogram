@@ -474,7 +474,7 @@ const MappingInterface: React.FC<MappingInterfaceProps> = ({
                 <div className="w-full">
                     {/* 3D Visualization Section (Left/Top) */}
                     <div className="canvas-container bg-white rounded-xl shadow-2xl overflow-hidden p-4">
-                        <h2 className="text-2xl font-bold text-teal-700  p-4 lg:p-0">3D Odontogram Mapping </h2>
+                        <h2 className="text-2xl font-bold text-teal-700  p-4 lg:p-0">Free 3D Odontogram Mapping </h2>
                         <div className="relative w-full h-full">
                             {isLoading && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100/70 z-10">

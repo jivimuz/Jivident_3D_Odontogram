@@ -26,7 +26,7 @@ function Footer() {
           }, []); // Empty dependency array means this runs only once when the App component mounts
         return (
             <footer className="bg-gray-800 text-white p-3 text-center text-xs mt-auto bottom-0 fixed w-full">
-                <p>&copy; {new Date().getFullYear()} Jivident 3D | Developed by Jivimz_ | All rights reserved.</p>
+                <p>&copy; {new Date().getFullYear()} Jivident 3D | Developed by Jivi Muzaqi Guntur | All rights reserved.</p>
                 <p className="text-gray-400 mt-1">Session IP: {userId}</p>
             </footer>
         )

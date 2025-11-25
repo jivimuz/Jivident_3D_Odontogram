@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "JiviDent 3D",
-  description: "3D Odontogram Apps by Jivi",
+  description: "Free 3D Odontogram Apps by Jivi Muzaqi Guntur",
 };
 
 export default function RootLayout({

@@ -17,6 +17,51 @@ const DevNotes = () => {
                             Jivi, Developer
                         </p>
 
+                         <div  className="group relative">
+              
+              {/* Efek Glow di belakang video saat hover */}
+              <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-blue-600 rounded-2xl blur opacity-20 group-hover:opacity-70 transition duration-500 group-hover:duration-200"></div>
+              
+              {/* Container Video Utama */}
+              <div className="relative rounded-2xl bg-gray-900 ring-1 ring-gray-700 overflow-hidden shadow-2xl transform transition-transform duration-500 group-hover:scale-[1.01]">
+                
+                {/* Header Bar ala Window (Opsional - memberi kesan aplikasi) */}
+                <div className="h-8 bg-gray-800/90 border-b border-gray-700 flex items-center px-4 space-x-2 backdrop-blur-sm">
+                  <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                  <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+                  <span className="ml-2 text-xs text-gray-500 font-mono uppercase tracking-wider">
+                    Bisa Pesan Custom/Integrasi seperti ini
+                  </span>
+                </div>
+
+                {/* Wrapper Iframe 16:9 */}
+                <div className="relative w-full aspect-video bg-black">
+                  <iframe
+                    src="https://www.youtube.com/embed/JMyOongk1vA?controls=0&autoplay=1&mute=1&playsinline=1&loop=1&playlist=JMyOongk1vA"
+                    title={`Video 1`}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="absolute top-0 left-0 w-full h-full opacity-90 group-hover:opacity-100 transition-opacity duration-300"
+                  ></iframe>
+
+                  {/* Overlay Dekoratif (Scanline / Vignette) */}
+                  <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-gray-900/40 to-transparent shadow-[inset_0_0_40px_rgba(0,0,0,0.6)]"></div>
+                  
+                  {/* Badge "Live Preview" di pojok video */}
+                  <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10">
+                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <span className="text-xs font-bold text-white tracking-wide">PREVIEW</span>
+                  </div>
+
+                </div>
+              </div>
+              </div>
+
+              {/* Dekorasi Geometris di luar kotak */}
+              <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-xl -z-10"></div>
+
                         {/* === DONATION BUTTON INTEGRATION === */}
                         <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col items-center">
                             <style dangerouslySetInnerHTML={{__html: `

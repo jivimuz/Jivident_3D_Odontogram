@@ -17,6 +17,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "JiviDent 3D",
   description: "Free 3D Odontogram Apps by Jivi Muzaqi Guntur",
+   keywords: ["3d mapping", "webgl", "open source 3d", "3d map nextjs", 'free 3d odontogram', 'mapping gigi', '3d odontogram'],
+  openGraph: {
+    title: "Free 3D Odontogram",
+    description: "Try interactive 3D odontology mapping directly in your browser.",
+    images: ["/assets/logo.png"]
+  }
 };
 
 export default function RootLayout({

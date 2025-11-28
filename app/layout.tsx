@@ -33,10 +33,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <Script  async
+       <head>
+        <Script
+          async
           strategy="afterInteractive"
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3791184145323279"
-          crossOrigin="anonymous" />
+          crossOrigin="anonymous"
+        />
+      </head>
+
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

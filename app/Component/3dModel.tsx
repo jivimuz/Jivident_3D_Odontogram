@@ -497,6 +497,10 @@ const MappingInterface: React.FC<MappingInterfaceProps> = ({
                                 - Click on a Tooth to Mark (Mapping) or Remove.
                                 <br /> - Hold right click to move object
                             </div>
+                            <div className="absolute bottom-10 right-5  text-gray-400 text-xs font-semibold px-3 py-1 ">
+                                Jivident 3D
+                            </div>
+
                             {/* FOOTER LAMA DIHAPUS DARI SINI */}
                         </div>
                     

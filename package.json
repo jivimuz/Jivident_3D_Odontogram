@@ -6,8 +6,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "dev": "npm run build:lib && next dev --webpack",
+    "build": "npm run build:lib && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "build:lib": "npm run build --workspace 3d-odontogram",

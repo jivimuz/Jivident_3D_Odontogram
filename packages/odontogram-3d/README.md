@@ -53,10 +53,17 @@ The component renders a `<canvas>` that fills its parent — size it with a cont
 Colors accept a hex number (`0xff0000`) or any CSS color string (`"#ff0000"`, `"red"`).
 Changing the `theme` prop after mount re-applies it live — no reload of the 3D model.
 
-## Pointing at your own model files
+## Model files (zero setup by default)
 
-By default the component expects `ip1.bin.gz` (child) / `ip3.bin.gz` (adult) under
-`/assets/bin/` in the consuming app's public folder. Override the base path and/or file names:
+The `.bin.gz` model files (`ip1.bin.gz` for child, `ip3.bin.gz` for adult) are **not** bundled
+into this npm package — they're tens of MB, far too big to ship in every install. Instead, by
+default the component loads them from a public CDN (jsDelivr, serving the files straight from
+this package's GitHub repo), so it works out of the box with no extra setup.
+
+If you'd rather self-host the models (e.g. for offline use, a private network, or to avoid the
+external CDN dependency), download `ip1.bin.gz` / `ip3.bin.gz` from
+[`public/assets/bin`](https://github.com/jivimuz/Jivident_3D_Odontogram/tree/main/public/assets/bin)
+into your own app's public folder and override the base path and/or file names:
 
 ```tsx
 <Odontogram3D
@@ -97,7 +104,7 @@ handleRef.current?.applyTheme({ highlightColor: "#22c55e" });
 | --- | --- | --- | --- |
 | `toothType` | `"child" \| "adult"` | `"child"` | 20-tooth or 32-tooth model. |
 | `theme` | `OdontogramTheme` | see below | Colors for tooth/highlight/marker/background/lights. |
-| `modelBaseUrl` | `string` | `"/assets/bin"` | Base path for the `.bin.gz` model files. |
+| `modelBaseUrl` | `string` | jsDelivr CDN (this repo's `public/assets/bin`) | Base path for the `.bin.gz` model files. |
 | `modelFileNames` | `{ child?: string; adult?: string }` | `{ child: "ip1.bin.gz", adult: "ip3.bin.gz" }` | File names per tooth type. |
 | `initialPoints` | `MappedPoint[]` | — | Points to render as soon as the model loads. |
 | `onPointsChange` | `(points: MappedPoint[]) => void` | — | Called whenever points are added/removed/replaced. |

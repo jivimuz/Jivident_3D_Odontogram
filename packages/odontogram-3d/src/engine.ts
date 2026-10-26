@@ -7,7 +7,11 @@ import type { MappedPoint, OdontogramTheme, ToothType } from "./types";
 
 export interface OdontogramEngineOptions {
   theme?: OdontogramTheme;
-  /** Base path where `<toothType>` model files are served from. Default: "/assets/bin". */
+  /**
+   * Base path where `<toothType>` model files are served from.
+   * Default: a public CDN (jsDelivr, serving the files straight from this package's GitHub repo)
+   * so the component works with zero setup. Pass your own path/URL to self-host the models instead.
+   */
   modelBaseUrl?: string;
   /** Override the model file name per tooth type. Defaults to "ip1.bin.gz" (child) / "ip3.bin.gz" (adult). */
   modelFileNames?: { child?: string; adult?: string };
@@ -19,6 +23,10 @@ export interface OdontogramEngineOptions {
 }
 
 const DEFAULT_MODEL_FILE_NAMES = { child: "ip1.bin.gz", adult: "ip3.bin.gz" };
+
+/** Served straight from the GitHub repo via jsDelivr — no separate asset hosting needed. */
+const DEFAULT_MODEL_BASE_URL =
+  "https://cdn.jsdelivr.net/gh/jivimuz/Jivident_3D_Odontogram@main/public/assets/bin";
 
 /**
  * Encapsulates one Three.js scene/renderer/model instance. Every instance owns its own
@@ -125,7 +133,7 @@ export class OdontogramEngine {
   }
 
   private resolveModelUrl(toothType: ToothType) {
-    const base = this.options.modelBaseUrl ?? "/assets/bin";
+    const base = this.options.modelBaseUrl ?? DEFAULT_MODEL_BASE_URL;
     const fileNames = { ...DEFAULT_MODEL_FILE_NAMES, ...this.options.modelFileNames };
     const fileName = toothType === "adult" ? fileNames.adult : fileNames.child;
     return `${base.replace(/\/$/, "")}/${fileName}`;

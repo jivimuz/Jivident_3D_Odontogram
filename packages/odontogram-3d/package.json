@@ -1,6 +1,6 @@
 {
   "name": "3d-odontogram",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Customizable React + Three.js 3D odontogram (dental chart) canvas: theme the tooth, highlight and marker colors, and the canvas background.",
   "license": "MIT",
   "author": "Jivi <jivirasgal@gmail.com>",

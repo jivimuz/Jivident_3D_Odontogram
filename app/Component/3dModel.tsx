@@ -139,6 +139,7 @@ const MappingInterface: React.FC<MappingInterfaceProps> = ({
                                 ref={odontogramRef}
                                 toothType={toothType}
                                 theme={DEMO_THEME}
+                                modelBaseUrl="/assets/bin"
                                 className="w-full h-full link"
                                 style={{ opacity: isLoading ? 0.5 : 1 }}
                                 onPointsChange={onPointsChange}

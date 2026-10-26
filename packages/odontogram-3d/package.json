@@ -1,0 +1,58 @@
+{
+  "name": "3d-odontogram",
+  "version": "0.1.1",
+  "description": "Customizable React + Three.js 3D odontogram (dental chart) canvas: theme the tooth, highlight and marker colors, and the canvas background.",
+  "license": "MIT",
+  "author": "Jivi <jivirasgal@gmail.com>",
+  "keywords": [
+    "odontogram",
+    "dental",
+    "3d",
+    "three.js",
+    "react",
+    "dentistry"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18",
+    "three": ">=0.150.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/three": "^0.181.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "three": "^0.181.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jivimuz/Jivident_3D_Odontogram.git",
+    "directory": "packages/odontogram-3d"
+  }
+}

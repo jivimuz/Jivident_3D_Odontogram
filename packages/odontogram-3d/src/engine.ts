@@ -133,9 +133,11 @@ export class OdontogramEngine {
   }
 
   private resolveModelUrl(toothType: ToothType) {
-    const base = this.options.modelBaseUrl ?? DEFAULT_MODEL_BASE_URL;
+    const configuredBase = this.options.modelBaseUrl?.trim();
+    const base = configuredBase || DEFAULT_MODEL_BASE_URL;
     const fileNames = { ...DEFAULT_MODEL_FILE_NAMES, ...this.options.modelFileNames };
-    const fileName = toothType === "adult" ? fileNames.adult : fileNames.child;
+    const configuredFileName = toothType === "adult" ? fileNames.adult : fileNames.child;
+    const fileName = configuredFileName?.trim() || DEFAULT_MODEL_FILE_NAMES[toothType];
     return `${base.replace(/\/$/, "")}/${fileName}`;
   }
 

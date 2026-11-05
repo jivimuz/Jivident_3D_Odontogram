@@ -32,6 +32,8 @@ export interface Odontogram3DProps {
   onLoadingChange?: (loading: boolean) => void;
   minDistance?: number;
   maxDistance?: number;
+  /** Text shown as a non-interactive watermark in the bottom-right corner. Set to false to hide it. */
+  watermark?: string | false;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -52,6 +54,7 @@ export const Odontogram3D = forwardRef<Odontogram3DHandle, Odontogram3DProps>(
       onLoadingChange,
       minDistance,
       maxDistance,
+      watermark = "Jivident",
       className,
       style,
     },
@@ -135,12 +138,43 @@ export const Odontogram3D = forwardRef<Odontogram3DHandle, Odontogram3DProps>(
     );
 
     return (
-      <canvas
-        ref={canvasRef}
-        className={className}
-        style={{ width: "100%", height: "100%", ...style }}
-        onMouseDown={handlePointerDown}
-      />
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          className={className}
+          style={{ width: "100%", height: "100%", ...style }}
+          onMouseDown={handlePointerDown}
+        />
+        {watermark !== false && (
+          <span
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              right: 12,
+              bottom: 10,
+              zIndex: 1,
+              color: "rgba(255, 255, 255, 0.62)",
+              fontFamily: "Arial, Helvetica, sans-serif",
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: "0.12em",
+              lineHeight: 1,
+              pointerEvents: "none",
+              textTransform: "uppercase",
+              textShadow: "0 1px 3px rgba(0, 0, 0, 0.55)",
+              userSelect: "none",
+            }}
+          >
+            {watermark}
+          </span>
+        )}
+      </div>
     );
   }
 );

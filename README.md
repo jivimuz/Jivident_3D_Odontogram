@@ -62,6 +62,15 @@ import { Odontogram3D } from "3d-odontogram";
 />
 ```
 
+Watermark **Jivident** ditampilkan otomatis di kanan bawah canvas. Watermark
+tidak menangkap klik atau drag, sehingga interaksi 3D tetap berjalan. Teksnya
+dapat diganti atau disembunyikan:
+
+```tsx
+<Odontogram3D watermark="Jivident 3D" />
+<Odontogram3D watermark={false} />
+```
+
 Full usage, props and theme defaults: [packages/odontogram-3d/README.md](packages/odontogram-3d/README.md).
 
 ## Usage Guide
@@ -71,6 +80,55 @@ Full usage, props and theme defaults: [packages/odontogram-3d/README.md](package
 - Left-click drag → Rotate
 - Right-click drag / two fingers → Pan
 - Scroll → Zoom
+- Click a tooth → Add a diagnostic point
+- Click the selected tooth again → Remove its diagnostic point
+
+### Reading selected tooth data
+
+The reusable component reports the current selection through
+`onPointsChange`. The callback receives the complete, latest `MappedPoint[]`
+array after every add, remove, reset, or import operation:
+
+```tsx
+"use client";
+
+import { useRef, useState } from "react";
+import {
+  Odontogram3D,
+  type MappedPoint,
+  type Odontogram3DHandle,
+} from "3d-odontogram";
+
+export default function Chart() {
+  const [points, setPoints] = useState<MappedPoint[]>([]);
+  const odontogramRef = useRef<Odontogram3DHandle>(null);
+
+  return (
+    <>
+      <div style={{ height: 600 }}>
+        <Odontogram3D
+          ref={odontogramRef}
+          toothType="adult"
+          onPointsChange={setPoints}
+        />
+      </div>
+      <pre>{JSON.stringify(points, null, 2)}</pre>
+    </>
+  );
+}
+```
+
+Each selected point contains `id`, `toothId`, `x`, `y`, `z`, `type`, and
+`description`. To read it when the user presses Save, attach a ref and call:
+
+```tsx
+const points = odontogramRef.current?.getMappedPoints() ?? [];
+const selectedToothIds = points.map((point) => point.toothId);
+```
+
+The package README contains the complete API reference, examples for editing
+metadata, resetting, importing, exporting, theming, and self-hosting model
+files: [packages/odontogram-3d/README.md](packages/odontogram-3d/README.md).
 
 ## License
 

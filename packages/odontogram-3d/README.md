@@ -1,22 +1,26 @@
 # 3d-odontogram
 
-Komponen React + Three.js untuk menampilkan odontogram gigi 3D yang dapat
-dirotasi, di-zoom, dan diberi titik diagnosis dengan klik. Package ini
-menyimpan state pemetaan di dalam setiap instance komponen, sehingga beberapa
-odontogram dapat digunakan pada halaman yang sama.
+Customizable React + Three.js 3D odontogram. Rotate, zoom, and click teeth to
+place diagnostic points. Each component instance owns its own scene and
+mapping state.
+
+**Documentation:** English (default) · [Bahasa Indonesia](README.id.md) ·
+[简体中文](README.zh-CN.md) · [日本語](README.ja.md) · [한국어](README.ko.md) ·
+[Español](README.es.md) · [Português do Brasil](README.pt-BR.md) ·
+[Français](README.fr.md)
 
 ![3D Odontogram screenshot](https://raw.githubusercontent.com/jivimuz/Jivident_3D_Odontogram/main/ss1.png)
 
-## Instalasi
+## Install
 
 ```bash
 npm install 3d-odontogram three react react-dom
 ```
 
-`react`, `react-dom`, dan `three` adalah peer dependency, jadi harus dipasang
-di aplikasi yang menggunakan package ini.
+`react`, `react-dom`, and `three` are peer dependencies. In Next.js App
+Router, use the component from a Client Component.
 
-## Penggunaan dasar
+## Basic usage
 
 ```tsx
 "use client";
@@ -32,26 +36,14 @@ export default function Page() {
 }
 ```
 
-Canvas mengisi ukuran parent-nya. Karena itu parent harus memiliki `width` dan
-`height`. Pada Next.js App Router, komponen yang menggunakan odontogram harus
-berjalan sebagai Client Component.
+The parent element must have an explicit width and height because the canvas
+fills its parent. Left drag rotates, right drag pans, and scroll zooms.
+Click a tooth to add a diagnostic point; click it again to remove its points.
 
-### Kontrol 3D
+## Reading selected tooth data
 
-- Drag tombol kiri mouse: rotasi model.
-- Drag tombol kanan mouse: pan.
-- Scroll: zoom.
-- Klik gigi: tambah titik diagnosis.
-- Klik gigi yang sudah dipilih: hapus pemetaan pada gigi tersebut.
-
-Satu gigi hanya dapat memiliki satu titik aktif dari interaksi klik. Saat gigi
-yang sama diklik kembali, seluruh titik untuk `toothId` tersebut dihapus.
-
-## Mengambil data gigi yang diklik atau dipilih
-
-Cara utama adalah `onPointsChange`. Callback ini dipanggil setiap kali titik
-ditambah, dihapus, di-reset, atau diganti. Nilainya selalu berupa array
-terbaru, sehingga cocok langsung disimpan ke React state atau dikirim ke API.
+`onPointsChange` receives the complete current `MappedPoint[]` after every
+add, remove, reset, or replacement:
 
 ```tsx
 "use client";
@@ -60,162 +52,76 @@ import { useState } from "react";
 import { Odontogram3D, type MappedPoint } from "3d-odontogram";
 
 export default function DentalChart() {
-  const [selectedPoints, setSelectedPoints] = useState<MappedPoint[]>([]);
-
-  function handlePointsChange(points: MappedPoint[]) {
-    setSelectedPoints(points);
-
-    // Data terbaru dari gigi yang dipilih:
-    console.log("semua pilihan:", points);
-    console.log("gigi yang dipilih:", points.map((point) => point.toothId));
-  }
+  const [points, setPoints] = useState<MappedPoint[]>([]);
 
   return (
     <>
       <div style={{ width: "100%", height: 600 }}>
-        <Odontogram3D
-          toothType="adult"
-          onPointsChange={handlePointsChange}
-        />
+        <Odontogram3D toothType="adult" onPointsChange={setPoints} />
       </div>
-
-      <pre>{JSON.stringify(selectedPoints, null, 2)}</pre>
+      <pre>{JSON.stringify(points, null, 2)}</pre>
     </>
   );
 }
 ```
 
-Contoh hasil satu klik:
+Example point:
 
 ```json
-[
-  {
-    "id": 1730812345678,
-    "toothId": "Tooth-11",
-    "x": "1.23",
-    "y": "4.56",
-    "z": "-2.10",
-    "type": "Karies",
-    "description": ""
-  }
-]
-```
-
-Nilai `x`, `y`, dan `z` adalah koordinat titik klik dalam world space Three.js
-dan dikirim sebagai `string` dengan dua angka desimal. `toothId` mengikuti
-pemetaan nama gigi pada model yang digunakan. `type` default dari klik adalah
-`"Karies"`.
-
-### Mengambil data secara manual dengan `ref`
-
-Gunakan `Odontogram3DHandle` jika data perlu dibaca setelah aksi lain, misalnya
-saat tombol Simpan ditekan:
-
-```tsx
-"use client";
-
-import { useRef } from "react";
-import {
-  Odontogram3D,
-  type MappedPoint,
-  type Odontogram3DHandle,
-} from "3d-odontogram";
-
-export default function SaveButtonExample() {
-  const odontogramRef = useRef<Odontogram3DHandle>(null);
-
-  function handleSave() {
-    const points: MappedPoint[] =
-      odontogramRef.current?.getMappedPoints() ?? [];
-
-    console.log("data untuk disimpan:", points);
-    // fetch("/api/odontogram", {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify(points),
-    // });
-  }
-
-  return (
-    <>
-      <div style={{ width: "100%", height: 600 }}>
-        <Odontogram3D ref={odontogramRef} onPointsChange={console.log} />
-      </div>
-      <button type="button" onClick={handleSave}>
-        Simpan pilihan
-      </button>
-    </>
-  );
+{
+  "id": 1730812345678,
+  "toothId": "Tooth-11",
+  "x": "1.23",
+  "y": "4.56",
+  "z": "-2.10",
+  "type": "Karies",
+  "description": ""
 }
 ```
 
-Untuk mengambil data gigi tertentu:
+Read the current data with a ref:
 
 ```tsx
-const allPoints = odontogramRef.current?.getMappedPoints() ?? [];
-const tooth11 = allPoints.find((point) => point.toothId === "Tooth-11");
-const selectedToothIds = allPoints.map((point) => point.toothId);
+import { useRef } from "react";
+import { Odontogram3D, type Odontogram3DHandle } from "3d-odontogram";
+
+const odontogramRef = useRef<Odontogram3DHandle>(null);
+const points = odontogramRef.current?.getMappedPoints() ?? [];
+const tooth11 = points.find((point) => point.toothId === "Tooth-11");
+
+<Odontogram3D ref={odontogramRef} />;
 ```
 
-`getMappedPoints()` mengembalikan salinan array, jadi aman untuk dibaca tanpa
-mengubah state internal komponen.
-
-## Mengubah metadata, reset, dan import data
-
-### Mengubah `description` atau metadata lain
-
-`updatePoint` mengubah metadata titik berdasarkan `id` tanpa menggambar ulang
-model:
+## Mapping control
 
 ```tsx
-odontogramRef.current?.updatePoint(1730812345678, {
-  type: "Tambalan",
-  description: "Lesi pada permukaan oklusal",
+odontogramRef.current?.updatePoint(123, {
+  type: "Filling",
+  description: "Occlusal lesion",
 });
-```
-
-### Reset semua pilihan
-
-```tsx
 odontogramRef.current?.resetMapping();
-```
-
-### Memuat pilihan dari database atau JSON
-
-Data yang sudah disimpan dapat dipasang kembali dengan `initialPoints` saat
-komponen dibuat, atau dengan `setMappedPoints` setelah model selesai dimuat:
-
-```tsx
-<Odontogram3D
-  toothType="adult"
-  initialPoints={pointsFromDatabase}
-/>
-```
-
-```tsx
 odontogramRef.current?.setMappedPoints(pointsFromDatabase);
 ```
 
-`pointsFromDatabase` harus mengikuti bentuk `MappedPoint[]`. Titik dengan
-`toothId` yang tidak ada pada model akan diabaikan saat marker digambar, namun
-tetap berada di array data yang diberikan.
+Use `initialPoints={pointsFromDatabase}` to restore points during the initial
+model load. `pointsFromDatabase` must be a `MappedPoint[]`.
 
 ## Props
 
-| Prop | Tipe | Default | Keterangan |
+| Prop | Type | Default | Description |
 | --- | --- | --- | --- |
-| `toothType` | `"child" \| "adult"` | `"child"` | Model 20 gigi susu atau 32 gigi dewasa. |
-| `theme` | `OdontogramTheme` | lihat di bawah | Warna gigi, highlight, marker, background, dan lampu. |
-| `modelBaseUrl` | `string` | CDN jsDelivr | Folder tempat file model `.bin.gz` disajikan. |
-| `modelFileNames` | `{ child?: string; adult?: string }` | `ip1.bin.gz` / `ip3.bin.gz` | Override nama file model. |
-| `initialPoints` | `MappedPoint[]` | `undefined` | Titik yang digambar setelah model selesai dimuat. |
-| `onPointsChange` | `(points: MappedPoint[]) => void` | `undefined` | Dipanggil saat pilihan berubah. |
-| `onLoadingChange` | `(loading: boolean) => void` | `undefined` | Status pemuatan model. |
-| `minDistance` / `maxDistance` | `number` | `100` / `130` | Batas zoom kamera. |
-| `watermark` | `string \| false` | `"Jivident"` | Teks watermark di kanan bawah canvas. Gunakan `false` untuk menyembunyikannya. |
-| `className` / `style` | `string` / `React.CSSProperties` | `undefined` | Diteruskan ke `<canvas>`. |
+| `toothType` | `"child" \| "adult"` | `"child"` | 20-tooth child or 32-tooth adult model. |
+| `theme` | `OdontogramTheme` | defaults | Tooth, highlight, marker, background, and light colors. |
+| `modelBaseUrl` | `string` | jsDelivr CDN | Base URL for `.bin.gz` model files. |
+| `modelFileNames` | `{ child?: string; adult?: string }` | `ip1.bin.gz` / `ip3.bin.gz` | Override model names. |
+| `initialPoints` | `MappedPoint[]` | `undefined` | Points rendered after loading. |
+| `onPointsChange` | `(points: MappedPoint[]) => void` | `undefined` | Called whenever mapping changes. |
+| `onLoadingChange` | `(loading: boolean) => void` | `undefined` | Model loading status. |
+| `minDistance` / `maxDistance` | `number` | `100` / `130` | Camera zoom limits. |
+| `watermark` | `string \| false` | `"Jivident"` | Bottom-right watermark; `false` hides it. |
+| `className` / `style` | — | `undefined` | Applied to the canvas. |
 
-### `MappedPoint`
+### Data types
 
 ```ts
 interface MappedPoint {
@@ -227,11 +133,7 @@ interface MappedPoint {
   type: string;
   description?: string;
 }
-```
 
-### `Odontogram3DHandle`
-
-```ts
 interface Odontogram3DHandle {
   resetMapping: () => void;
   getMappedPoints: () => MappedPoint[];
@@ -241,7 +143,7 @@ interface Odontogram3DHandle {
 }
 ```
 
-## Tema warna
+## Theme and model hosting
 
 ```tsx
 <Odontogram3D
@@ -251,42 +153,22 @@ interface Odontogram3DHandle {
     markerColor: "#111827",
     canvasBackground: "#0f172a",
     canvasBackgroundOpacity: 1,
-    ambientLightColor: "#ffffff",
-    ambientLightIntensity: 0.9,
   }}
 />
 ```
 
-Warna dapat berupa angka hex Three.js (`0xff0000`) atau string CSS (`"#ff0000"`,
-`"red"`). Default theme:
+Colors accept Three.js hex numbers or CSS strings. The default model URLs are:
 
-| Key | Default |
-| --- | --- |
-| `toothColor` | `0xf5f5dc` |
-| `highlightColor` | `0x3b82f6` |
-| `markerColor` | `0xff0000` |
-| `canvasBackground` | `0xecf0f1` |
-| `canvasBackgroundOpacity` | `0` |
-| `ambientLightColor` / `ambientLightIntensity` | `0xffffff` / `0.8` |
-| `keyLightColor` / `keyLightIntensity` | `0xffffff` / `0.6` |
-| `fillLightColor` / `fillLightIntensity` | `0xffffff` / `0.4` |
+```text
+child → https://cdn.jsdelivr.net/gh/jivimuz/Jivident_3D_Odontogram@main/public/assets/bin/ip1.bin.gz
+adult → https://cdn.jsdelivr.net/gh/jivimuz/Jivident_3D_Odontogram@main/public/assets/bin/ip3.bin.gz
+```
 
-## Hosting file model
-
-File model `ip1.bin.gz` (child) dan `ip3.bin.gz` (adult) tidak dibundel ke
-package karena ukurannya besar. Secara default keduanya diambil dari CDN
-jsDelivr repository ini. Untuk offline atau self-hosting, salin file model ke
-folder public aplikasi lalu atur URL-nya:
+Models load from jsDelivr automatically and are not bundled in npm. For
+self-hosting, copy them to your public folder and use:
 
 ```tsx
-<Odontogram3D
-  toothType="child"
-  modelBaseUrl="/odontogram-assets"
-  modelFileNames={{
-    child: "child-model.bin.gz",
-    adult: "adult-model.bin.gz",
-  }}
-/>
+<Odontogram3D toothType="adult" modelBaseUrl="/odontogram-assets" />
 ```
 
 ## License

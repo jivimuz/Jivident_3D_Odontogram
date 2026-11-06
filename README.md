@@ -35,6 +35,8 @@ This repo is a monorepo with two parts:
 
 ### Running the demo app
 
+Requirements: Node.js 18.18 or newer and npm.
+
 ```bash
 git clone https://github.com/jivimuz/Jivident_3D_Odontogram.git
 cd Jivident_3D_Odontogram
@@ -42,98 +44,71 @@ npm install
 npm run dev
 ```
 
-Open: `http://localhost:3000`
+Open [http://localhost:3000](http://localhost:3000).
 
-This installs the whole npm workspace (demo app + the `3d-odontogram` package it depends on). If you only
-want to rebuild the package itself, run `npm run build:lib`.
+The root project is an npm workspace. `npm install` installs dependencies for
+both the Next.js demo and the local `3d-odontogram` package. The development
+command builds the package before starting Next.js.
 
-### Using the 3D odontogram in your own project
+### Installing the package in another React project
+
+Install the published package and its peer dependencies:
 
 ```bash
 npm install 3d-odontogram three react react-dom
 ```
 
-```tsx
-import { Odontogram3D } from "3d-odontogram";
-
-<Odontogram3D
-  toothType="adult"
-  theme={{ toothColor: "#fdf6e3", highlightColor: "#e11d48", canvasBackground: "#0f172a" }}
-/>
-```
-
-Watermark **Jivident** ditampilkan otomatis di kanan bawah canvas. Watermark
-tidak menangkap klik atau drag, sehingga interaksi 3D tetap berjalan. Teksnya
-dapat diganti atau disembunyikan:
-
-```tsx
-<Odontogram3D watermark="Jivident 3D" />
-<Odontogram3D watermark={false} />
-```
-
-Full usage, props and theme defaults: [packages/odontogram-3d/README.md](packages/odontogram-3d/README.md).
-
-## Usage Guide
-
-**Navigation:**
-
-- Left-click drag → Rotate
-- Right-click drag / two fingers → Pan
-- Scroll → Zoom
-- Click a tooth → Add a diagnostic point
-- Click the selected tooth again → Remove its diagnostic point
-
-### Reading selected tooth data
-
-The reusable component reports the current selection through
-`onPointsChange`. The callback receives the complete, latest `MappedPoint[]`
-array after every add, remove, reset, or import operation:
+Use it from a Client Component:
 
 ```tsx
 "use client";
 
-import { useRef, useState } from "react";
-import {
-  Odontogram3D,
-  type MappedPoint,
-  type Odontogram3DHandle,
-} from "3d-odontogram";
+import { Odontogram3D } from "3d-odontogram";
 
-export default function Chart() {
-  const [points, setPoints] = useState<MappedPoint[]>([]);
-  const odontogramRef = useRef<Odontogram3DHandle>(null);
-
+export default function DentalChart() {
   return (
-    <>
-      <div style={{ height: 600 }}>
-        <Odontogram3D
-          ref={odontogramRef}
-          toothType="adult"
-          onPointsChange={setPoints}
-        />
-      </div>
-      <pre>{JSON.stringify(points, null, 2)}</pre>
-    </>
+    <div style={{ width: "100%", height: 600 }}>
+      <Odontogram3D toothType="adult" />
+    </div>
   );
 }
 ```
 
-Each selected point contains `id`, `toothId`, `x`, `y`, `z`, `type`, and
-`description`. To read it when the user presses Save, attach a ref and call:
+The parent element must have an explicit height because the canvas fills its
+parent. Model files are loaded automatically from the default jsDelivr CDN.
+For the complete props reference and selected-point data examples, see the
+[package README](packages/odontogram-3d/README.md).
 
-```tsx
-const points = odontogramRef.current?.getMappedPoints() ?? [];
-const selectedToothIds = points.map((point) => point.toothId);
+### Working on the package locally
+
+Build the package:
+
+```bash
+npm run build:lib
 ```
 
-The package README contains the complete API reference, examples for editing
-metadata, resetting, importing, exporting, theming, and self-hosting model
-files: [packages/odontogram-3d/README.md](packages/odontogram-3d/README.md).
+Run the package build in watch mode:
 
-## License
+```bash
+npm run dev:lib
+```
 
-MIT License
+Run linting and the production build:
 
----
+```bash
+npm run lint
+npm run build
+```
 
-Made by Jivident - Jivi Muzaqi Guntur
+### Documentation languages
+
+The package README is available in:
+
+- [English (default)](packages/odontogram-3d/README.md)
+- [Bahasa Indonesia](packages/odontogram-3d/README.id.md)
+- [简体中文](packages/odontogram-3d/README.zh-CN.md)
+- [日本語](packages/odontogram-3d/README.ja.md)
+- [한국어](packages/odontogram-3d/README.ko.md)
+- [Español](packages/odontogram-3d/README.es.md)
+- [Português do Brasil](packages/odontogram-3d/README.pt-BR.md)
+- [Français](packages/odontogram-3d/README.fr.md)
